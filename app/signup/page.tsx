@@ -13,7 +13,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { AuthSuccessDialog } from "@/components/auth/auth-success-dialog"
 import { signup } from "./actions"
+
+type SearchParams = Record<string, string | string[] | undefined>
+
+function resolveParam(value?: string | string[]) {
+  return Array.isArray(value) ? value[0] : value
+}
 
 const onboarding = [
   {
@@ -33,7 +40,15 @@ const onboarding = [
   },
 ]
 
-export default function SignupPage() {
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams?: SearchParams | Promise<SearchParams>
+}) {
+  const params = (await searchParams) ?? {}
+  const error = resolveParam(params.error)
+  const message = resolveParam(params.message)
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(167,139,250,0.18),_transparent_45%),_radial-gradient(circle_at_bottom,_rgba(96,165,250,0.12),_transparent_40%)]" />
@@ -103,6 +118,11 @@ export default function SignupPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
+              {error && (
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive-foreground">
+                  {error}
+                </div>
+              )}
               <form action={signup} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="full-name" className="text-foreground">
@@ -231,6 +251,11 @@ export default function SignupPage() {
           </Card>
         </div>
       </div>
+      <AuthSuccessDialog
+        message={message}
+        title="Account created"
+        actionLabel="Continue"
+      />
     </div>
   )
 }

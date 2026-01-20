@@ -6,11 +6,25 @@ import { createClient } from "@/lib/supabase/server"
 export async function login(formData: FormData) {
   const email = String(formData.get("email") || "").trim()
   const password = String(formData.get("password") || "")
+  const next = String(formData.get("next") || "/stock")
+  const redirectTo = next.startsWith("/") ? next : "/stock"
+
+  if (!email || !password) {
+    redirect(
+      `/login?error=${encodeURIComponent("Email and password are required.")}`
+    )
+  }
 
   const supabase = await createClient()
 
   const { error } = await supabase.auth.signInWithPassword({ email, password })
-  if (error) return { ok: false, message: error.message }
+  if (error) {
+    redirect(
+      `/login?error=${encodeURIComponent(
+        error.message
+      )}&next=${encodeURIComponent(redirectTo)}`
+    )
+  }
 
-  redirect("/stock")
+  redirect(redirectTo)
 }

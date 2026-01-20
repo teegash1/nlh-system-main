@@ -13,7 +13,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { AuthSuccessDialog } from "@/components/auth/auth-success-dialog"
 import { login } from "./actions"
+
+type SearchParams = Record<string, string | string[] | undefined>
+
+function resolveParam(value?: string | string[]) {
+  return Array.isArray(value) ? value[0] : value
+}
 
 const highlights = [
   {
@@ -46,7 +53,16 @@ const quickStats = [
   },
 ]
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams?: SearchParams | Promise<SearchParams>
+}) {
+  const params = (await searchParams) ?? {}
+  const error = resolveParam(params.error)
+  const message = resolveParam(params.message)
+  const next = resolveParam(params.next) ?? "/stock"
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(96,165,250,0.14),_transparent_45%),_radial-gradient(circle_at_bottom,_rgba(52,211,153,0.12),_transparent_40%)]" />
@@ -113,7 +129,13 @@ export default function LoginPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
+              {error && (
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive-foreground">
+                  {error}
+                </div>
+              )}
               <form action={login} className="space-y-4">
+                <input type="hidden" name="next" value={next} />
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-foreground">
                     Work Email
@@ -192,6 +214,11 @@ export default function LoginPage() {
           </Card>
         </div>
       </div>
+      <AuthSuccessDialog
+        message={message}
+        title="Sign up complete"
+        actionLabel="Continue to sign in"
+      />
     </div>
   )
 }
