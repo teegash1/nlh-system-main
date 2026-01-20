@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { signup } from "./actions"
 
 const onboarding = [
   {
@@ -102,13 +103,14 @@ export default function SignupPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              <form className="space-y-4">
+              <form action={signup} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="full-name" className="text-foreground">
                     Full Name
                   </Label>
                   <Input
                     id="full-name"
+                    name="fullName"
                     type="text"
                     placeholder="Your name"
                     autoComplete="name"
@@ -122,6 +124,7 @@ export default function SignupPage() {
                   </Label>
                   <Input
                     id="email"
+                    name="email"
                     type="email"
                     placeholder="you@nobles.org"
                     autoComplete="email"
@@ -131,28 +134,30 @@ export default function SignupPage() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="church" className="text-foreground">
-                      Church Name
-                    </Label>
-                    <Input
-                      id="church"
-                      type="text"
-                      placeholder="Nobles Lighthouse"
-                      autoComplete="organization"
-                      required
-                      className="bg-secondary/40 border-border text-foreground"
+                  <Label htmlFor="church" className="text-foreground">
+                    Church Name
+                  </Label>
+                  <Input
+                    id="church"
+                    name="church"
+                    type="text"
+                    placeholder="Nobles Lighthouse"
+                    autoComplete="organization"
+                    required
+                    className="bg-secondary/40 border-border text-foreground"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="role" className="text-foreground">
-                      Role
-                    </Label>
-                    <Input
-                      id="role"
-                      type="text"
-                      placeholder="Stock Steward"
-                      autoComplete="organization-title"
-                      className="bg-secondary/40 border-border text-foreground"
+                  <Label htmlFor="role" className="text-foreground">
+                    Role
+                  </Label>
+                  <Input
+                    id="role"
+                    name="role"
+                    type="text"
+                    placeholder="Stock Steward"
+                    autoComplete="organization-title"
+                    className="bg-secondary/40 border-border text-foreground"
                     />
                   </div>
                 </div>
@@ -162,6 +167,7 @@ export default function SignupPage() {
                   </Label>
                   <Input
                     id="password"
+                    name="password"
                     type="password"
                     placeholder="Create a strong password"
                     autoComplete="new-password"
@@ -175,6 +181,7 @@ export default function SignupPage() {
                   </Label>
                   <Input
                     id="confirm-password"
+                    name="confirmPassword"
                     type="password"
                     placeholder="Re-enter your password"
                     autoComplete="new-password"

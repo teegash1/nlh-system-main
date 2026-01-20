@@ -451,7 +451,7 @@ export default function ReportsPage() {
                   </Button>
                 </div>
 
-                <div className="hidden items-center gap-3 rounded-lg border border-border bg-secondary/30 px-4 py-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground md:grid md:grid-cols-[110px_1.3fr_1fr_110px_1fr_auto]">
+                <div className="hidden items-center gap-3 rounded-lg border border-border bg-secondary/30 px-4 py-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground md:grid md:grid-cols-[110px_1.4fr_1fr_110px_110px_160px]">
                   <span>Date</span>
                   <span>Vendor</span>
                   <span>Category</span>
@@ -472,7 +472,7 @@ export default function ReportsPage() {
                           key={receipt.id}
                           className="rounded-xl border border-border bg-secondary/20 p-4"
                         >
-                          <div className="flex flex-col gap-3 md:grid md:grid-cols-[110px_1.3fr_1fr_110px_1fr_auto] md:items-center">
+                          <div className="flex flex-col gap-3 md:grid md:grid-cols-[110px_1.4fr_1fr_110px_110px_160px] md:items-center">
                             <div className="text-xs text-foreground">
                               <p className="font-medium">{formatShortDate(receipt.date)}</p>
                               <p className="text-[10px] text-muted-foreground">
@@ -505,7 +505,7 @@ export default function ReportsPage() {
                                 {receipt.status}
                               </Badge>
                             </div>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-2 md:flex-nowrap">
                               <Button
                                 variant="outline"
                                 size="sm"
