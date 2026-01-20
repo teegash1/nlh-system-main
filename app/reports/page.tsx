@@ -63,11 +63,13 @@ type ReceiptEntry = {
   amount: number
   amountReceived: number | null
   balance: number | null
+  previousBalance: number | null
   paymentMethod: string
   status: string
   reference: string | null
   viewUrl: string | null
   fileName: string | null
+  createdAt: string
 }
 
 const paymentMethods = ["Cash", "Mobile Money", "Bank Transfer", "Card"]
@@ -150,7 +152,7 @@ export default async function ReportsPage() {
     const { data, error } = await supabase
       .from("receipts")
       .select(
-        "id, receipt_date, vendor, category, amount, amount_received, balance, payment_method, status, reference, file_path"
+        "id, receipt_date, vendor, category, amount, amount_received, balance, payment_method, status, reference, file_path, created_at"
       )
       .eq("user_id", userId)
       .order("receipt_date", { ascending: false })
@@ -186,17 +188,45 @@ export default async function ReportsPage() {
         amount: Number(row.amount),
         amountReceived: row.amount_received != null ? Number(row.amount_received) : null,
         balance: row.balance != null ? Number(row.balance) : null,
+        previousBalance: null,
         paymentMethod: row.payment_method,
         status: row.status ?? "Pending",
         reference: row.reference,
         viewUrl: urlEntry?.viewUrl ?? null,
         fileName: urlEntry?.fileName ?? null,
+        createdAt: row.created_at,
       }
     })
   }
 
+  const receiptsChronological = [...receipts].sort((a, b) => {
+    const dateCompare = a.date.localeCompare(b.date)
+    if (dateCompare !== 0) return dateCompare
+    const createdCompare = a.createdAt.localeCompare(b.createdAt)
+    if (createdCompare !== 0) return createdCompare
+    return a.id.localeCompare(b.id)
+  })
+
+  let runningBalance = 0
+  const runningMap = new Map<string, { balance: number; previousBalance: number }>()
+  receiptsChronological.forEach((receipt) => {
+    const received = receipt.amountReceived ?? receipt.amount ?? 0
+    const previousBalance = runningBalance
+    runningBalance = previousBalance + received - receipt.amount
+    runningMap.set(receipt.id, { balance: runningBalance, previousBalance })
+  })
+
+  receipts = receipts.map((receipt) => {
+    const computed = runningMap.get(receipt.id)
+    return {
+      ...receipt,
+      balance: computed?.balance ?? receipt.balance,
+      previousBalance: computed?.previousBalance ?? null,
+    }
+  })
+
   const sortedReceipts = [...receipts].sort((a, b) =>
-    b.date.localeCompare(a.date)
+    b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)
   )
   const latestReceipt = sortedReceipts[0] ?? null
   const lastReceiptDate = latestReceipt ? formatShortDate(latestReceipt.date) : null
@@ -204,7 +234,9 @@ export default async function ReportsPage() {
   const lastSpent = latestReceipt?.amount ?? null
   const currentBalance =
     latestReceipt?.balance ??
-    (lastReceived != null && lastSpent != null ? lastReceived - lastSpent : null)
+    (lastReceived != null && lastSpent != null
+      ? (latestReceipt?.previousBalance ?? 0) + lastReceived - lastSpent
+      : null)
   const receiptsByMonth = sortedReceipts.reduce((groups, receipt) => {
     const monthLabel = formatMonthLabel(receipt.date)
     const existing = groups.get(monthLabel)
@@ -442,6 +474,7 @@ export default async function ReportsPage() {
                                   paymentMethod: receipt.paymentMethod,
                                   amount: receipt.amount,
                                   amountReceived: receipt.amountReceived,
+                                  previousBalance: receipt.previousBalance,
                                   reference: receipt.reference,
                                 }}
                                 viewUrl={receipt.viewUrl}

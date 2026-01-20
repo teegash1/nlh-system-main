@@ -18,6 +18,7 @@ interface ReceiptActionsProps {
     paymentMethod: string
     amount: number
     amountReceived: number | null
+    previousBalance: number | null
     reference: string | null
   }
   viewUrl: string | null

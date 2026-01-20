@@ -28,6 +28,7 @@ interface EditReceiptDialogProps {
     paymentMethod: string
     amount: number
     amountReceived: number | null
+    previousBalance: number | null
     reference: string | null
   }
   categories: string[]
@@ -234,12 +235,16 @@ export function EditReceiptDialog({
                   value={(() => {
                     const amount = Number(formData.amount)
                     const received = Number(formData.amountReceived)
+                    const baseBalance = receipt.previousBalance ?? 0
                     if (!Number.isFinite(amount) || !Number.isFinite(received)) return ""
-                    return (received - amount).toLocaleString(undefined, { maximumFractionDigits: 2 })
+                    return (baseBalance + received - amount).toLocaleString(undefined, { maximumFractionDigits: 2 })
                   })()}
                   placeholder="Auto-calculated"
                   className="bg-secondary/20 border-border text-foreground"
                 />
+                <p className="text-[11px] text-muted-foreground">
+                  Running balance uses money at hand before this purchase.
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor={`edit-receipt-reference-${receipt.id}`} className="text-foreground">

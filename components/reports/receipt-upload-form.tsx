@@ -101,9 +101,10 @@ export function ReceiptUploadForm({
 
   const amountValue = Number(formData.amount)
   const amountReceivedValue = Number(formData.amountReceived)
+  const baseBalance = currentBalance ?? 0
   const balanceValue =
     Number.isFinite(amountValue) && Number.isFinite(amountReceivedValue)
-      ? amountReceivedValue - amountValue
+      ? baseBalance + amountReceivedValue - amountValue
       : null
   const showSummary =
     currentBalance != null || lastReceived != null || lastSpent != null
@@ -285,6 +286,9 @@ export function ReceiptUploadForm({
             placeholder="Auto-calculated"
             className="bg-secondary/20 border-border text-foreground"
           />
+          <p className="text-[11px] text-muted-foreground">
+            Money at hand is auto-added to the amount received.
+          </p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="receipt-reference" className="text-foreground">

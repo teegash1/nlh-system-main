@@ -14,6 +14,70 @@ function sanitizeFilename(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]/g, "-")
 }
 
+async function getCurrentBalance(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+  const { data: latest, error: latestError } = await supabase
+    .from("receipts")
+    .select("balance, amount, amount_received, receipt_date, created_at, id")
+    .eq("user_id", userId)
+    .order("receipt_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (latestError) throw latestError
+
+  if (latest?.balance != null) {
+    return Number(latest.balance)
+  }
+
+  const { data: rows, error } = await supabase
+    .from("receipts")
+    .select("amount, amount_received, receipt_date, created_at, id")
+    .eq("user_id", userId)
+    .order("receipt_date", { ascending: true })
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true })
+
+  if (error) throw error
+
+  let running = 0
+  for (const row of rows ?? []) {
+    const received = Number(row.amount_received ?? row.amount ?? 0)
+    const spent = Number(row.amount ?? 0)
+    running += received - spent
+  }
+  return running
+}
+
+async function recalculateBalances(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string
+) {
+  const { data: rows, error } = await supabase
+    .from("receipts")
+    .select("id, amount, amount_received, receipt_date, created_at")
+    .eq("user_id", userId)
+    .order("receipt_date", { ascending: true })
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true })
+
+  if (error) throw error
+
+  let running = 0
+  for (const row of rows ?? []) {
+    const received = Number(row.amount_received ?? row.amount ?? 0)
+    const spent = Number(row.amount ?? 0)
+    running += received - spent
+    const { error: updateError } = await supabase
+      .from("receipts")
+      .update({ balance: running })
+      .eq("id", row.id)
+      .eq("user_id", userId)
+    if (updateError) throw updateError
+  }
+}
+
 export async function createReceipt(formData: FormData) {
   const receiptDate = String(formData.get("receiptDate") || "").trim()
   const vendor = String(formData.get("vendor") || "").trim()
@@ -55,7 +119,6 @@ export async function createReceipt(formData: FormData) {
   if (!Number.isFinite(amountReceived)) {
     return { ok: false, message: "Amount received must be a valid number." }
   }
-  const balance = amountReceived - amount
 
   const supabase = await createClient()
   const { data: userData, error: userError } = await supabase.auth.getUser()
@@ -67,6 +130,14 @@ export async function createReceipt(formData: FormData) {
   const userId = userData.user?.id
   if (!userId) {
     return { ok: false, message: "You must be signed in." }
+  }
+
+  let balance = 0
+  try {
+    const currentBalance = await getCurrentBalance(supabase, userId)
+    balance = currentBalance + amountReceived - amount
+  } catch (error) {
+    return { ok: false, message: "Unable to calculate balance." }
   }
 
   const timestamp = Date.now()
@@ -100,6 +171,12 @@ export async function createReceipt(formData: FormData) {
 
   if (insertError) {
     return { ok: false, message: insertError.message }
+  }
+
+  try {
+    await recalculateBalances(supabase, userId)
+  } catch (error) {
+    return { ok: false, message: "Receipt saved but balance refresh failed." }
   }
 
   revalidatePath("/reports")
@@ -136,7 +213,6 @@ export async function updateReceipt(formData: FormData) {
   if (!Number.isFinite(amountReceived)) {
     return { ok: false, message: "Amount received must be a valid number." }
   }
-  const balance = amountReceived - amount
 
   const supabase = await createClient()
   const { data: userData, error: userError } = await supabase.auth.getUser()
@@ -157,7 +233,6 @@ export async function updateReceipt(formData: FormData) {
       category,
       amount,
       amount_received: amountReceived,
-      balance,
       payment_method: paymentMethod,
       reference: reference || null,
       receipt_date: receiptDate,
@@ -167,6 +242,12 @@ export async function updateReceipt(formData: FormData) {
 
   if (error) {
     return { ok: false, message: error.message }
+  }
+
+  try {
+    await recalculateBalances(supabase, userId)
+  } catch (refreshError) {
+    return { ok: false, message: "Receipt updated but balance refresh failed." }
   }
 
   revalidatePath("/reports")
@@ -265,6 +346,12 @@ export async function deleteReceipt(formData: FormData) {
 
   if (error) {
     return { ok: false, message: error.message }
+  }
+
+  try {
+    await recalculateBalances(supabase, userId)
+  } catch (refreshError) {
+    return { ok: false, message: "Receipt deleted but balance refresh failed." }
   }
 
   revalidatePath("/reports")
