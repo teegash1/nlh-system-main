@@ -17,7 +17,7 @@ type StockMoveRow = {
 }
 
 export default async function StockPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { data: itemsData, error: itemsError } = await supabase
     .from("inventory_items")

@@ -8,7 +8,7 @@ export async function signup(formData: FormData) {
   const password = String(formData.get("password") || "")
   const fullName = String(formData.get("fullName") || "").trim()
 
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { data, error } = await supabase.auth.signUp({ email, password })
   if (error) {
