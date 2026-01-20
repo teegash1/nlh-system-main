@@ -107,6 +107,8 @@ create table public.receipts (
   vendor text not null,
   category text not null,
   amount numeric not null,
+  amount_received numeric null,
+  balance numeric null,
   payment_method text not null,
   reference text null,
   receipt_date date not null,

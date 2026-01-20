@@ -20,10 +20,18 @@ export async function createReceipt(formData: FormData) {
   const category = String(formData.get("category") || "").trim()
   const paymentMethod = String(formData.get("paymentMethod") || "").trim()
   const amountValue = String(formData.get("amount") || "").trim()
+  const amountReceivedValue = String(formData.get("amountReceived") || "").trim()
   const reference = String(formData.get("reference") || "").trim()
   const file = formData.get("file") as File | null
 
-  if (!receiptDate || !vendor || !category || !paymentMethod || !amountValue) {
+  if (
+    !receiptDate ||
+    !vendor ||
+    !category ||
+    !paymentMethod ||
+    !amountValue ||
+    !amountReceivedValue
+  ) {
     return { ok: false, message: "Please fill in all required fields." }
   }
 
@@ -43,6 +51,11 @@ export async function createReceipt(formData: FormData) {
   if (!Number.isFinite(amount)) {
     return { ok: false, message: "Amount must be a valid number." }
   }
+  const amountReceived = Number(amountReceivedValue)
+  if (!Number.isFinite(amountReceived)) {
+    return { ok: false, message: "Amount received must be a valid number." }
+  }
+  const balance = amountReceived - amount
 
   const supabase = await createClient()
   const { data: userData, error: userError } = await supabase.auth.getUser()
@@ -76,6 +89,8 @@ export async function createReceipt(formData: FormData) {
     vendor,
     category,
     amount,
+    amount_received: amountReceived,
+    balance,
     payment_method: paymentMethod,
     reference: reference || null,
     receipt_date: receiptDate,
@@ -98,9 +113,18 @@ export async function updateReceipt(formData: FormData) {
   const category = String(formData.get("category") || "").trim()
   const paymentMethod = String(formData.get("paymentMethod") || "").trim()
   const amountValue = String(formData.get("amount") || "").trim()
+  const amountReceivedValue = String(formData.get("amountReceived") || "").trim()
   const reference = String(formData.get("reference") || "").trim()
 
-  if (!id || !receiptDate || !vendor || !category || !paymentMethod || !amountValue) {
+  if (
+    !id ||
+    !receiptDate ||
+    !vendor ||
+    !category ||
+    !paymentMethod ||
+    !amountValue ||
+    !amountReceivedValue
+  ) {
     return { ok: false, message: "Please fill in all required fields." }
   }
 
@@ -108,6 +132,11 @@ export async function updateReceipt(formData: FormData) {
   if (!Number.isFinite(amount)) {
     return { ok: false, message: "Amount must be a valid number." }
   }
+  const amountReceived = Number(amountReceivedValue)
+  if (!Number.isFinite(amountReceived)) {
+    return { ok: false, message: "Amount received must be a valid number." }
+  }
+  const balance = amountReceived - amount
 
   const supabase = await createClient()
   const { data: userData, error: userError } = await supabase.auth.getUser()
@@ -127,6 +156,8 @@ export async function updateReceipt(formData: FormData) {
       vendor,
       category,
       amount,
+      amount_received: amountReceived,
+      balance,
       payment_method: paymentMethod,
       reference: reference || null,
       receipt_date: receiptDate,

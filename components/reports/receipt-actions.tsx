@@ -17,6 +17,7 @@ interface ReceiptActionsProps {
     category: string
     paymentMethod: string
     amount: number
+    amountReceived: number | null
     reference: string | null
   }
   viewUrl: string | null

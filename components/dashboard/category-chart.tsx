@@ -3,11 +3,17 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
 
-const data = [
+const fallbackData = [
   { name: "Beverages", value: 42, color: "#60a5fa" },
   { name: "Detergents", value: 28, color: "#34d399" },
   { name: "Others", value: 30, color: "#fbbf24" },
 ]
+
+export interface CategoryChartDatum {
+  name: string
+  value: number
+  color: string
+}
 
 interface CustomTooltipProps {
   active?: boolean
@@ -26,8 +32,13 @@ const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
   return null
 }
 
-export function CategoryChart() {
-  const total = data.reduce((sum, item) => sum + item.value, 0)
+export function CategoryChart({
+  data,
+}: {
+  data?: CategoryChartDatum[]
+}) {
+  const chartData = data ?? fallbackData
+  const total = chartData.reduce((sum, item) => sum + item.value, 0)
 
   return (
     <Card className="bg-card border-border">
@@ -47,7 +58,7 @@ export function CategoryChart() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={data}
+                  data={chartData}
                   cx="50%"
                   cy="50%"
                   innerRadius={50}
@@ -56,7 +67,7 @@ export function CategoryChart() {
                   dataKey="value"
                   strokeWidth={0}
                 >
-                  {data.map((entry, index) => (
+                  {chartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -69,7 +80,7 @@ export function CategoryChart() {
             </div>
           </div>
           <div className="flex-1 space-y-3">
-            {data.map((item) => (
+            {chartData.map((item) => (
               <div key={item.name} className="flex items-center gap-3">
                 <div
                   className="w-3 h-3 rounded-full"

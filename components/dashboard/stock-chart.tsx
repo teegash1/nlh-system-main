@@ -12,12 +12,18 @@ import {
   Cell,
 } from "recharts"
 
-const data = [
+const fallbackData = [
   { month: "Oct", value: 4200, fill: "#3f3f46" },
   { month: "Nov", value: 3800, fill: "#3f3f46" },
   { month: "Dec", value: 5100, fill: "#3f3f46" },
   { month: "Jan", value: 4600, fill: "#60a5fa" },
 ]
+
+export interface StockChartDatum {
+  month: string
+  value: number
+  highlight?: boolean
+}
 
 interface CustomTooltipProps {
   active?: boolean
@@ -39,7 +45,29 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   return null
 }
 
-export function StockChart() {
+export function StockChart({
+  data,
+  rangeLabel,
+  totalLabel,
+}: {
+  data?: StockChartDatum[]
+  rangeLabel?: string
+  totalLabel?: string
+}) {
+  const baseData = data ?? fallbackData
+  const chartData = baseData.map((entry) => ({
+    ...entry,
+    fill:
+      "fill" in entry
+        ? (entry as { fill: string }).fill
+        : entry.highlight
+          ? "#60a5fa"
+          : "#3f3f46",
+  }))
+  const totalValue =
+    totalLabel ??
+    `KES ${chartData.reduce((sum, item) => sum + (item.value ?? 0), 0).toLocaleString()}`
+
   return (
     <Card className="bg-card border-border">
       <CardHeader className="pb-2">
@@ -49,11 +77,11 @@ export function StockChart() {
               Stock Expenses
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
-              October 2025 - January 2026
+              {rangeLabel ?? "October 2025 - January 2026"}
             </CardDescription>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-bold text-foreground">KES 17,700</p>
+            <p className="text-2xl font-bold text-foreground">{totalValue}</p>
             <p className="text-xs text-muted-foreground">Total Spend</p>
           </div>
         </div>
@@ -61,7 +89,7 @@ export function StockChart() {
       <CardContent className="pt-4">
         <div className="h-[200px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+            <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
               <XAxis
                 dataKey="month"
@@ -77,7 +105,7 @@ export function StockChart() {
               />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
               <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                {data.map((entry, index) => (
+                {chartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.fill} />
                 ))}
               </Bar>

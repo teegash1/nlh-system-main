@@ -61,6 +61,8 @@ type ReceiptEntry = {
   vendor: string
   category: string
   amount: number
+  amountReceived: number | null
+  balance: number | null
   paymentMethod: string
   status: string
   reference: string | null
@@ -148,7 +150,7 @@ export default async function ReportsPage() {
     const { data, error } = await supabase
       .from("receipts")
       .select(
-        "id, receipt_date, vendor, category, amount, payment_method, status, reference, file_path"
+        "id, receipt_date, vendor, category, amount, amount_received, balance, payment_method, status, reference, file_path"
       )
       .eq("user_id", userId)
       .order("receipt_date", { ascending: false })
@@ -182,6 +184,8 @@ export default async function ReportsPage() {
         vendor: row.vendor,
         category: row.category,
         amount: Number(row.amount),
+        amountReceived: row.amount_received != null ? Number(row.amount_received) : null,
+        balance: row.balance != null ? Number(row.balance) : null,
         paymentMethod: row.payment_method,
         status: row.status ?? "Pending",
         reference: row.reference,
@@ -194,6 +198,13 @@ export default async function ReportsPage() {
   const sortedReceipts = [...receipts].sort((a, b) =>
     b.date.localeCompare(a.date)
   )
+  const latestReceipt = sortedReceipts[0] ?? null
+  const lastReceiptDate = latestReceipt ? formatShortDate(latestReceipt.date) : null
+  const lastReceived = latestReceipt?.amountReceived ?? null
+  const lastSpent = latestReceipt?.amount ?? null
+  const currentBalance =
+    latestReceipt?.balance ??
+    (lastReceived != null && lastSpent != null ? lastReceived - lastSpent : null)
   const receiptsByMonth = sortedReceipts.reduce((groups, receipt) => {
     const monthLabel = formatMonthLabel(receipt.date)
     const existing = groups.get(monthLabel)
@@ -334,6 +345,10 @@ export default async function ReportsPage() {
                 <ReceiptUploadForm
                   categories={receiptCategories}
                   paymentMethods={paymentMethods}
+                  currentBalance={currentBalance}
+                  lastReceived={lastReceived}
+                  lastSpent={lastSpent}
+                  lastReceiptDate={lastReceiptDate}
                 />
               </div>
 
@@ -426,6 +441,7 @@ export default async function ReportsPage() {
                                   category: receipt.category,
                                   paymentMethod: receipt.paymentMethod,
                                   amount: receipt.amount,
+                                  amountReceived: receipt.amountReceived,
                                   reference: receipt.reference,
                                 }}
                                 viewUrl={receipt.viewUrl}

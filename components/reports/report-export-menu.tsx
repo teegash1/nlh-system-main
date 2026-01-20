@@ -330,6 +330,7 @@ export function ReportExportMenu({ reportType, reportTitle }: ReportExportMenuPr
     from?: Date
     to?: Date
   }>({})
+  const isRangeComplete = Boolean(range.from && range.to)
 
   const rangeLabel =
     range.from && range.to
@@ -708,7 +709,16 @@ export function ReportExportMenu({ reportType, reportTitle }: ReportExportMenuPr
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Popover open={rangeOpen} onOpenChange={setRangeOpen}>
+      <Popover
+        open={rangeOpen}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen && !isRangeComplete) {
+            setRangeOpen(true)
+            return
+          }
+          setRangeOpen(nextOpen)
+        }}
+      >
         <PopoverTrigger asChild>
           <Button
             variant="outline"
@@ -718,7 +728,20 @@ export function ReportExportMenu({ reportType, reportTitle }: ReportExportMenuPr
             {rangeLabel}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0 bg-card border-border" align="end">
+        <PopoverContent
+          className="w-auto p-0 bg-card border-border"
+          align="end"
+          onInteractOutside={(event) => {
+            if (!isRangeComplete) {
+              event.preventDefault()
+            }
+          }}
+          onEscapeKeyDown={(event) => {
+            if (!isRangeComplete) {
+              event.preventDefault()
+            }
+          }}
+        >
           <Calendar
             initialFocus
             mode="range"

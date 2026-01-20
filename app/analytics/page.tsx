@@ -1,11 +1,244 @@
 import { AppShell } from "@/components/layout/app-shell"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { StockChart } from "@/components/dashboard/stock-chart"
-import { CategoryChart } from "@/components/dashboard/category-chart"
+import { StockChart, type StockChartDatum } from "@/components/dashboard/stock-chart"
+import { CategoryChart, type CategoryChartDatum } from "@/components/dashboard/category-chart"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { TrendingUp, TrendingDown, BarChart3, PieChart } from "lucide-react"
+import { createClient } from "@/lib/supabase/server"
+import {
+  endOfMonth,
+  format,
+  parseISO,
+  startOfMonth,
+  subMonths,
+} from "date-fns"
 
-export default function AnalyticsPage() {
+const formatMonthKey = (date: Date) => format(date, "yyyy-MM")
+const safeNumber = (value: unknown) => {
+  const num = Number(value)
+  return Number.isFinite(num) ? num : 0
+}
+const parseCountValue = (value: unknown, rawValue?: string | null) => {
+  if (typeof value === "number" && Number.isFinite(value)) return value
+  const raw = String(rawValue ?? "").trim().toLowerCase()
+  if (!raw) return null
+  if (raw === "nil" || raw === "none") return 0
+  if (/^-?\d+(\.\d+)?$/.test(raw)) return Number(raw)
+  return null
+}
+
+export default async function AnalyticsPage() {
+  const supabase = await createClient()
+  const now = new Date()
+  const lastEightMonths = Array.from({ length: 8 }, (_, index) =>
+    startOfMonth(subMonths(now, 7 - index))
+  )
+  const lastFourMonths = lastEightMonths.slice(4)
+  const rangeStart = lastEightMonths[0]
+  const rangeEnd = endOfMonth(now)
+
+  const { data: receipts, error: receiptsError } = await supabase
+    .from("receipts")
+    .select("receipt_date, amount")
+    .gte("receipt_date", format(rangeStart, "yyyy-MM-dd"))
+    .lte("receipt_date", format(rangeEnd, "yyyy-MM-dd"))
+
+  if (receiptsError) throw new Error(receiptsError.message)
+
+  const totalsByMonth = new Map<string, number>()
+  lastEightMonths.forEach((date) => totalsByMonth.set(formatMonthKey(date), 0))
+
+  ;(receipts ?? []).forEach((receipt) => {
+    if (!receipt.receipt_date) return
+    const key = formatMonthKey(parseISO(receipt.receipt_date))
+    if (!totalsByMonth.has(key)) return
+    totalsByMonth.set(key, totalsByMonth.get(key)! + safeNumber(receipt.amount))
+  })
+
+  const currentTotals = lastFourMonths.map(
+    (date) => totalsByMonth.get(formatMonthKey(date)) ?? 0
+  )
+  const prevTotals = lastEightMonths
+    .slice(0, 4)
+    .map((date) => totalsByMonth.get(formatMonthKey(date)) ?? 0)
+
+  const avgCurrent =
+    currentTotals.reduce((sum, value) => sum + value, 0) / currentTotals.length
+  const avgPrev =
+    prevTotals.reduce((sum, value) => sum + value, 0) / prevTotals.length
+  const avgChange =
+    avgPrev > 0 ? Number((((avgCurrent - avgPrev) / avgPrev) * 100).toFixed(2)) : 0
+
+  const stockChartData: StockChartDatum[] = lastFourMonths.map((date, index) => ({
+    month: format(date, "MMM"),
+    value: totalsByMonth.get(formatMonthKey(date)) ?? 0,
+    highlight: index === lastFourMonths.length - 1,
+  }))
+  const spendTotal = currentTotals.reduce((sum, value) => sum + value, 0)
+  const spendRangeLabel = `${format(lastFourMonths[0], "MMM yyyy")} - ${format(
+    lastFourMonths[lastFourMonths.length - 1],
+    "MMM yyyy"
+  )}`
+
+  const monthlyComparison = lastFourMonths
+    .slice()
+    .reverse()
+    .map((date, index, arr) => {
+      const value = totalsByMonth.get(formatMonthKey(date)) ?? 0
+      const prevDate = arr[index + 1]
+      const prevValue = prevDate
+        ? totalsByMonth.get(formatMonthKey(prevDate)) ?? 0
+        : 0
+      const change =
+        prevValue > 0 ? Number((((value - prevValue) / prevValue) * 100).toFixed(1)) : 0
+      return {
+        month: format(date, "MMMM"),
+        value,
+        change,
+      }
+    })
+
+  const { data: itemsData, error: itemsError } = await supabase
+    .from("inventory_items")
+    .select("id, name, category:inventory_categories(name)")
+    .eq("is_active", true)
+    .order("name")
+
+  if (itemsError) throw new Error(itemsError.message)
+
+  const items = itemsData ?? []
+
+  const categoryCounts = new Map<string, number>()
+  items.forEach((item: any) => {
+    const name = item.category?.name ?? "Uncategorized"
+    categoryCounts.set(name, (categoryCounts.get(name) ?? 0) + 1)
+  })
+
+  const categoryPalette = ["#60a5fa", "#34d399", "#fbbf24", "#a78bfa", "#f87171"]
+  const totalItems = items.length
+  const categoryChartData: CategoryChartDatum[] = Array.from(categoryCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, count], index) => ({
+      name,
+      value: totalItems === 0 ? 0 : Math.round((count / totalItems) * 100),
+      color: categoryPalette[index % categoryPalette.length],
+    }))
+
+  const largestShare = categoryChartData[0]?.value ?? 0
+  const categoryBalance =
+    totalItems === 0 ? "No data" : largestShare <= 50 ? "Good" : largestShare <= 70 ? "Fair" : "Skewed"
+
+  const { data: countDates, error: countDatesError } = await supabase
+    .from("stock_counts")
+    .select("count_date")
+    .order("count_date", { ascending: false })
+    .limit(120)
+
+  if (countDatesError) throw new Error(countDatesError.message)
+
+  const uniqueDates: string[] = []
+  for (const row of countDates ?? []) {
+    const date = String(row.count_date)
+    if (!uniqueDates.includes(date)) uniqueDates.push(date)
+    if (uniqueDates.length >= 3) break
+  }
+
+  const [latestDate, prevDate, olderDate] = uniqueDates
+  let topConsumed: { name: string; consumption: number; color: string }[] = []
+  let totalConsumption = 0
+  let prevConsumption = 0
+  let avgOnHand = 0
+
+  if (latestDate && prevDate) {
+    const { data: countsData, error: countsError } = await supabase
+      .from("stock_counts")
+      .select("item_id, count_date, qty_numeric, raw_value, item:inventory_items(name)")
+      .in("count_date", [latestDate, prevDate, olderDate].filter(Boolean))
+
+    if (countsError) throw new Error(countsError.message)
+
+    const byItem = new Map<
+      string,
+      { name: string; latest?: number | null; prev?: number | null; older?: number | null }
+    >()
+
+    for (const row of countsData ?? []) {
+      const entry = byItem.get(row.item_id) ?? {
+        name: row.item?.name ?? "Unknown item",
+      }
+      const value = parseCountValue(row.qty_numeric, row.raw_value)
+      if (row.count_date === latestDate) entry.latest = value
+      if (row.count_date === prevDate) entry.prev = value
+      if (row.count_date === olderDate) entry.older = value
+      byItem.set(row.item_id, entry)
+    }
+
+    const consumptionRows = Array.from(byItem.values()).map((entry) => {
+      const latest = entry.latest ?? null
+      const prev = entry.prev ?? null
+      const consumption =
+        latest != null && prev != null ? Math.max(0, prev - latest) : 0
+      return { name: entry.name, consumption }
+    })
+
+    consumptionRows.sort((a, b) => b.consumption - a.consumption)
+    const top = consumptionRows.slice(0, 5)
+    const maxConsumption = top[0]?.consumption ?? 0
+    const colorTokens = ["chart-1", "chart-2", "chart-3", "chart-5", "chart-4"]
+
+    topConsumed = top.map((row, index) => ({
+      name: row.name,
+      consumption: maxConsumption > 0 ? Math.round((row.consumption / maxConsumption) * 100) : 0,
+      color: colorTokens[index % colorTokens.length],
+    }))
+
+    totalConsumption = consumptionRows.reduce((sum, row) => sum + row.consumption, 0)
+    const avgEntries = Array.from(byItem.values())
+      .map((entry) => entry.latest)
+      .filter((value): value is number => typeof value === "number")
+    avgOnHand =
+      avgEntries.length > 0
+        ? avgEntries.reduce((sum, value) => sum + value, 0) / avgEntries.length
+        : 0
+
+    if (olderDate) {
+      prevConsumption = Array.from(byItem.values()).reduce((sum, entry) => {
+        const prev = entry.prev ?? null
+        const older = entry.older ?? null
+        if (prev == null || older == null) return sum
+        return sum + Math.max(0, older - prev)
+      }, 0)
+    }
+  }
+
+  if (topConsumed.length === 0) {
+    const colorTokens = ["chart-1", "chart-2", "chart-3", "chart-5", "chart-4"]
+    topConsumed = items.slice(0, 5).map((item: any, index: number) => ({
+      name: item.name,
+      consumption: 0,
+      color: colorTokens[index % colorTokens.length],
+    }))
+  }
+
+  const turnoverValue = avgOnHand > 0 ? totalConsumption / avgOnHand : 0
+  const prevTurnover = avgOnHand > 0 ? prevConsumption / avgOnHand : 0
+  const turnoverChange =
+    prevTurnover > 0
+      ? Number((((turnoverValue - prevTurnover) / prevTurnover) * 100).toFixed(1))
+      : 0
+  const wasteReduction =
+    prevConsumption > 0
+      ? Number((((prevConsumption - totalConsumption) / prevConsumption) * 100).toFixed(1))
+      : 0
+
+  const hasAnalyticsData =
+    (receipts?.length ?? 0) > 0 ||
+    items.length > 0 ||
+    (countDates?.length ?? 0) > 0
+
+  const emptyValue = "—"
+  const emptyLabel = "No data yet"
+
   return (
     <AppShell title="Analytics" subtitle="Insights and data visualization">
       <div className="p-4 md:p-6 space-y-6">
@@ -21,32 +254,40 @@ export default function AnalyticsPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             title="Avg Monthly Spend"
-            value="KES 5,849"
-            change={3.89}
-            changeLabel="vs prev. quarter"
-            trend="up"
+            value={
+              hasAnalyticsData
+                ? `KES ${Math.round(avgCurrent).toLocaleString()}`
+                : emptyValue
+            }
+            change={hasAnalyticsData ? avgChange : undefined}
+            changeLabel={hasAnalyticsData ? "vs prev. quarter" : emptyLabel}
+            trend={hasAnalyticsData ? (avgChange >= 0 ? "up" : "down") : "neutral"}
             icon={<TrendingUp className="h-5 w-5 text-chart-2" />}
           />
           <StatCard
             title="Stock Turnover"
-            value="4.2x"
-            change={12}
-            changeLabel="improvement"
-            trend="up"
+            value={hasAnalyticsData ? `${turnoverValue.toFixed(1)}x` : emptyValue}
+            change={hasAnalyticsData ? turnoverChange : undefined}
+            changeLabel={hasAnalyticsData ? "improvement" : emptyLabel}
+            trend={hasAnalyticsData ? (turnoverChange >= 0 ? "up" : "down") : "neutral"}
             icon={<BarChart3 className="h-5 w-5 text-chart-1" />}
           />
           <StatCard
             title="Waste Reduction"
-            value="15%"
-            change={-8}
-            changeLabel="vs last year"
-            trend="down"
+            value={
+              hasAnalyticsData
+                ? `${Math.abs(Math.round(wasteReduction))}%`
+                : emptyValue
+            }
+            change={hasAnalyticsData ? wasteReduction : undefined}
+            changeLabel={hasAnalyticsData ? "vs last period" : emptyLabel}
+            trend={hasAnalyticsData ? (wasteReduction >= 0 ? "up" : "down") : "neutral"}
             icon={<TrendingDown className="h-5 w-5 text-chart-4" />}
           />
           <StatCard
             title="Category Balance"
-            value="Good"
-            changeLabel="Optimized"
+            value={hasAnalyticsData ? categoryBalance : emptyValue}
+            changeLabel={hasAnalyticsData ? "Optimized" : emptyLabel}
             trend="neutral"
             icon={<PieChart className="h-5 w-5 text-chart-5" />}
           />
@@ -54,8 +295,12 @@ export default function AnalyticsPage() {
 
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <StockChart />
-          <CategoryChart />
+          <StockChart
+            data={stockChartData}
+            rangeLabel={spendRangeLabel}
+            totalLabel={`KES ${Math.round(spendTotal).toLocaleString()}`}
+          />
+          <CategoryChart data={categoryChartData} />
         </div>
 
         {/* Additional Analytics */}
@@ -69,11 +314,7 @@ export default function AnalyticsPage() {
             <CardContent>
               <div className="space-y-4">
                 {[
-                  { name: "Coffee Sachets", consumption: 85, color: "chart-1" },
-                  { name: "Sugar", consumption: 72, color: "chart-2" },
-                  { name: "Tissue Rolls", consumption: 68, color: "chart-3" },
-                  { name: "Teabags", consumption: 54, color: "chart-5" },
-                  { name: "Plastic Cups", consumption: 45, color: "chart-4" },
+                  ...topConsumed,
                 ].map((item, index) => (
                   <div key={index} className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -103,10 +344,7 @@ export default function AnalyticsPage() {
             <CardContent>
               <div className="space-y-4">
                 {[
-                  { month: "January", value: 4600, change: 8.5 },
-                  { month: "December", value: 5100, change: 12.3 },
-                  { month: "November", value: 3800, change: -5.2 },
-                  { month: "October", value: 4200, change: 3.1 },
+                  ...monthlyComparison,
                 ].map((item, index) => (
                   <div
                     key={index}

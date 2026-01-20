@@ -27,6 +27,7 @@ interface EditReceiptDialogProps {
     category: string
     paymentMethod: string
     amount: number
+    amountReceived: number | null
     reference: string | null
   }
   categories: string[]
@@ -47,6 +48,7 @@ export function EditReceiptDialog({
     category: receipt.category,
     paymentMethod: receipt.paymentMethod,
     amount: receipt.amount.toString(),
+    amountReceived: receipt.amountReceived?.toString() ?? "",
     reference: receipt.reference ?? "",
   })
   const router = useRouter()
@@ -63,6 +65,10 @@ export function EditReceiptDialog({
       setError("Select an expenditure date.")
       return
     }
+    if (!formData.amountReceived) {
+      setError("Enter the amount received for shopping.")
+      return
+    }
 
     const payload = new FormData()
     payload.set("id", receipt.id)
@@ -71,6 +77,7 @@ export function EditReceiptDialog({
     payload.set("category", formData.category)
     payload.set("paymentMethod", formData.paymentMethod)
     payload.set("amount", formData.amount)
+    payload.set("amountReceived", formData.amountReceived)
     payload.set("reference", formData.reference)
 
     startTransition(async () => {
@@ -183,7 +190,7 @@ export function EditReceiptDialog({
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor={`edit-receipt-amount-${receipt.id}`} className="text-foreground">
-                  Amount (KES)
+                  Amount Spent (KES)
                 </Label>
                 <Input
                   id={`edit-receipt-amount-${receipt.id}`}
@@ -196,6 +203,42 @@ export function EditReceiptDialog({
                   }
                   className="bg-secondary/40 border-border text-foreground"
                   required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor={`edit-receipt-received-${receipt.id}`} className="text-foreground">
+                  Amount Received (KES)
+                </Label>
+                <Input
+                  id={`edit-receipt-received-${receipt.id}`}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.amountReceived}
+                  onChange={(event) =>
+                    setFormData({ ...formData, amountReceived: event.target.value })
+                  }
+                  className="bg-secondary/40 border-border text-foreground"
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor={`edit-receipt-balance-${receipt.id}`} className="text-foreground">
+                  Balance Remaining (KES)
+                </Label>
+                <Input
+                  id={`edit-receipt-balance-${receipt.id}`}
+                  readOnly
+                  value={(() => {
+                    const amount = Number(formData.amount)
+                    const received = Number(formData.amountReceived)
+                    if (!Number.isFinite(amount) || !Number.isFinite(received)) return ""
+                    return (received - amount).toLocaleString(undefined, { maximumFractionDigits: 2 })
+                  })()}
+                  placeholder="Auto-calculated"
+                  className="bg-secondary/20 border-border text-foreground"
                 />
               </div>
               <div className="space-y-2">

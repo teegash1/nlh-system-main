@@ -13,11 +13,19 @@ import { createReceipt } from "@/app/reports/actions"
 interface ReceiptUploadFormProps {
   categories: string[]
   paymentMethods: string[]
+  currentBalance?: number | null
+  lastReceived?: number | null
+  lastSpent?: number | null
+  lastReceiptDate?: string | null
 }
 
 export function ReceiptUploadForm({
   categories,
   paymentMethods,
+  currentBalance,
+  lastReceived,
+  lastSpent,
+  lastReceiptDate,
 }: ReceiptUploadFormProps) {
   const hasCategories = categories.length > 0
   const [isPending, startTransition] = useTransition()
@@ -28,6 +36,7 @@ export function ReceiptUploadForm({
     category: "",
     paymentMethod: "",
     amount: "",
+    amountReceived: "",
     reference: "",
   })
   const fileRef = useRef<HTMLInputElement | null>(null)
@@ -47,12 +56,18 @@ export function ReceiptUploadForm({
       return
     }
 
+    if (!formData.amountReceived) {
+      setError("Enter the amount received for shopping.")
+      return
+    }
+
     const payload = new FormData()
     payload.set("receiptDate", formData.receiptDate)
     payload.set("vendor", formData.vendor)
     payload.set("category", formData.category)
     payload.set("paymentMethod", formData.paymentMethod)
     payload.set("amount", formData.amount)
+    payload.set("amountReceived", formData.amountReceived)
     payload.set("reference", formData.reference)
 
     const file = fileRef.current?.files?.[0]
@@ -74,6 +89,7 @@ export function ReceiptUploadForm({
         category: "",
         paymentMethod: "",
         amount: "",
+        amountReceived: "",
         reference: "",
       })
       if (fileRef.current) {
@@ -83,11 +99,55 @@ export function ReceiptUploadForm({
     })
   }
 
+  const amountValue = Number(formData.amount)
+  const amountReceivedValue = Number(formData.amountReceived)
+  const balanceValue =
+    Number.isFinite(amountValue) && Number.isFinite(amountReceivedValue)
+      ? amountReceivedValue - amountValue
+      : null
+  const showSummary =
+    currentBalance != null || lastReceived != null || lastSpent != null
+
   return (
     <form className="space-y-4" onSubmit={handleSubmit}>
       {error && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive-foreground">
           {error}
+        </div>
+      )}
+      {showSummary && (
+        <div className="rounded-lg border border-border bg-secondary/20 p-3">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Received
+              </p>
+              <p className="text-sm font-semibold text-foreground">
+                {lastReceived != null ? `KES ${lastReceived.toLocaleString()}` : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Spent
+              </p>
+              <p className="text-sm font-semibold text-foreground">
+                {lastSpent != null ? `KES ${lastSpent.toLocaleString()}` : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Money at hand
+              </p>
+              <p className="text-sm font-semibold text-foreground">
+                {currentBalance != null ? `KES ${currentBalance.toLocaleString()}` : "—"}
+              </p>
+            </div>
+          </div>
+          {lastReceiptDate && (
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Last updated: {lastReceiptDate}
+            </p>
+          )}
         </div>
       )}
       <div className="space-y-2">
@@ -176,7 +236,7 @@ export function ReceiptUploadForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="receipt-amount" className="text-foreground">
-            Amount (KES)
+            Amount Spent (KES)
           </Label>
           <Input
             id="receipt-amount"
@@ -190,6 +250,40 @@ export function ReceiptUploadForm({
               setFormData({ ...formData, amount: event.target.value })
             }
             className="bg-secondary/40 border-border text-foreground"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="receipt-amount-received" className="text-foreground">
+            Amount Received (KES)
+          </Label>
+          <Input
+            id="receipt-amount-received"
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="0.00"
+            required
+            value={formData.amountReceived}
+            onChange={(event) =>
+              setFormData({ ...formData, amountReceived: event.target.value })
+            }
+            className="bg-secondary/40 border-border text-foreground"
+          />
+        </div>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="receipt-balance" className="text-foreground">
+            Balance Remaining (KES)
+          </Label>
+          <Input
+            id="receipt-balance"
+            readOnly
+            value={
+              balanceValue == null ? "" : balanceValue.toLocaleString(undefined, { maximumFractionDigits: 2 })
+            }
+            placeholder="Auto-calculated"
+            className="bg-secondary/20 border-border text-foreground"
           />
         </div>
         <div className="space-y-2">
