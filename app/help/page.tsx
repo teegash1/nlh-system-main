@@ -13,9 +13,6 @@ import {
   Phone,
   ExternalLink,
 } from "lucide-react"
-import { useSearchParams } from "next/navigation"
-import { Suspense } from "react"
-import Loading from "./loading"
 
 const helpTopics = [
   {
@@ -84,25 +81,23 @@ export default function HelpPage() {
         </div>
 
         {/* Search */}
-        <Suspense fallback={<Loading />}>
-          <Card className="bg-card border-border">
-            <CardContent className="p-6">
-              <div className="text-center max-w-xl mx-auto">
-                <h2 className="text-lg font-semibold text-foreground mb-2">How can we help you?</h2>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Search our knowledge base or browse topics below
-                </p>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search for help articles..."
-                    className="pl-10 bg-secondary/50 border-border text-foreground placeholder:text-muted-foreground"
-                  />
-                </div>
+        <Card className="bg-card border-border">
+          <CardContent className="p-6">
+            <div className="text-center max-w-xl mx-auto">
+              <h2 className="text-lg font-semibold text-foreground mb-2">How can we help you?</h2>
+              <p className="text-sm text-muted-foreground mb-4">
+                Search our knowledge base or browse topics below
+              </p>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search for help articles..."
+                  className="pl-10 bg-secondary/50 border-border text-foreground placeholder:text-muted-foreground"
+                />
               </div>
-            </CardContent>
-          </Card>
-        </Suspense>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Help Topics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
