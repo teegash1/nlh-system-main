@@ -10,12 +10,14 @@ export type StockRow = {
   category: string
   unit: string
   reorder_level: number | null
-  stock: number
-  totalValue: number
+  asOf: string | null
+  displayValue: string
 }
 
 export default function StockClient({ initialData }: { initialData: StockRow[] }) {
   const [query, setQuery] = useState("")
+  const latestStocktake =
+    initialData.find((row) => row.asOf)?.asOf ?? "—"
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -37,6 +39,9 @@ export default function StockClient({ initialData }: { initialData: StockRow[] }
             <p className="text-sm text-muted-foreground">
               Live inventory synced from Supabase
             </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Latest Stocktake: {latestStocktake}
+            </p>
           </div>
           <Input
             value={query}
@@ -47,33 +52,30 @@ export default function StockClient({ initialData }: { initialData: StockRow[] }
         </div>
 
         <div className="rounded-xl border border-border overflow-hidden bg-card">
-          <div className="border-b border-border p-4 grid grid-cols-6 gap-4 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-            <div className="col-span-2">Item</div>
-            <div>Category</div>
-            <div>Stock</div>
-            <div>Unit</div>
-            <div className="text-right">Total Value</div>
+          <div className="border-b border-border p-4 grid grid-cols-12 gap-4 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+            <div className="col-span-4">Item</div>
+            <div className="col-span-3">Category</div>
+            <div className="col-span-3">Count</div>
+            <div className="col-span-2">Unit</div>
           </div>
 
           <div className="p-4 space-y-3">
             {filtered.map((row) => (
               <div
                 key={row.id}
-                className="grid grid-cols-6 gap-4 text-sm items-center"
+                className="grid grid-cols-12 gap-4 text-sm items-center"
               >
-                <div className="col-span-2 font-medium text-foreground">
+                <div className="col-span-4 font-medium text-foreground">
                   {row.name}
                 </div>
-                <div className="text-muted-foreground">{row.category}</div>
-                <div className="text-foreground">
-                  {Number.isFinite(row.stock) ? row.stock.toLocaleString() : "0"}
+                <div className="col-span-3 text-muted-foreground">
+                  {row.category}
                 </div>
-                <div className="text-muted-foreground">{row.unit}</div>
-                <div className="text-right font-medium text-foreground">
-                  KES{" "}
-                  {Number.isFinite(row.totalValue)
-                    ? row.totalValue.toLocaleString()
-                    : "0"}
+                <div className="col-span-3 text-foreground">
+                  {row.displayValue}
+                </div>
+                <div className="col-span-2 text-muted-foreground">
+                  {row.unit}
                 </div>
               </div>
             ))}
