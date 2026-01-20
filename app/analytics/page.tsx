@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { StockChart, type StockChartDatum } from "@/components/dashboard/stock-chart"
 import { CategoryChart, type CategoryChartDatum } from "@/components/dashboard/category-chart"
 import { StatCard } from "@/components/dashboard/stat-card"
-import { TrendingUp, TrendingDown, BarChart3, PieChart } from "lucide-react"
+import { TrendingUp, TrendingDown, BarChart3, PieChart, Wallet } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import {
   endOfMonth,
@@ -44,6 +44,15 @@ export default async function AnalyticsPage() {
     .lte("receipt_date", format(rangeEnd, "yyyy-MM-dd"))
 
   if (receiptsError) throw new Error(receiptsError.message)
+
+  const { data: latestReceipts, error: latestReceiptError } = await supabase
+    .from("receipts")
+    .select("receipt_date, amount, amount_received, balance")
+    .order("receipt_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(1)
+
+  if (latestReceiptError) throw new Error(latestReceiptError.message)
 
   const totalsByMonth = new Map<string, number>()
   lastEightMonths.forEach((date) => totalsByMonth.set(formatMonthKey(date), 0))
@@ -231,10 +240,25 @@ export default async function AnalyticsPage() {
       ? Number((((prevConsumption - totalConsumption) / prevConsumption) * 100).toFixed(1))
       : 0
 
+  const latestReceipt = latestReceipts?.[0] ?? null
+  const latestReceived =
+    latestReceipt?.amount_received != null
+      ? Number(latestReceipt.amount_received)
+      : null
+  const latestSpent =
+    latestReceipt?.amount != null ? Number(latestReceipt.amount) : null
+  const amountAtHand =
+    latestReceipt?.balance != null
+      ? Number(latestReceipt.balance)
+      : latestReceived != null && latestSpent != null
+        ? latestReceived - latestSpent
+        : null
+
   const hasAnalyticsData =
     (receipts?.length ?? 0) > 0 ||
     items.length > 0 ||
-    (countDates?.length ?? 0) > 0
+    (countDates?.length ?? 0) > 0 ||
+    latestReceipt != null
 
   const emptyValue = "—"
   const emptyLabel = "No data yet"
@@ -290,6 +314,20 @@ export default async function AnalyticsPage() {
             changeLabel={hasAnalyticsData ? "Optimized" : emptyLabel}
             trend="neutral"
             icon={<PieChart className="h-5 w-5 text-chart-5" />}
+          />
+          <StatCard
+            title="Amount at hand"
+            value={
+              hasAnalyticsData && amountAtHand != null
+                ? `KES ${amountAtHand.toLocaleString(undefined, {
+                    maximumFractionDigits: 2,
+                  })}`
+                : emptyValue
+            }
+            changeLabel={hasAnalyticsData ? "Balance after expenses" : emptyLabel}
+            trend="neutral"
+            icon={<Wallet className="h-5 w-5 text-chart-3" />}
+            className="col-span-2 md:col-span-1"
           />
         </div>
 
