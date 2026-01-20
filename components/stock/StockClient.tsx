@@ -1,18 +1,20 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { AppShell } from "@/components/layout/app-shell"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { CategoryFilter } from "@/components/stock/category-filter"
 import { AddItemDialog } from "@/components/stock/add-item-dialog"
 import { AddCountDialog } from "@/components/stock/add-count-dialog"
 import { CountsTable, type StockCountRow } from "@/components/stock/counts-table"
 import { ItemsTable, type StockItemRow } from "@/components/stock/items-table"
-import { StockTable, type StockItem } from "@/components/stock/stock-table"
+import type { StockItem } from "@/components/stock/stock-table"
+import { WeeklyTabs } from "@/components/stock/weekly-tabs"
 import { AlertTriangle, CalendarDays, Layers, ListChecks, Package } from "lucide-react"
-import { format, parseISO } from "date-fns"
+import { endOfWeek, format, parseISO, startOfWeek } from "date-fns"
 
 export type StockRow = {
   id: string
@@ -32,6 +34,18 @@ type WeeklyCount = {
   qtyUnit: string | null
 }
 
+const getNumericCount = (count?: StockCountRow | null) => {
+  if (!count) return null
+  if (typeof count.qtyNumeric === "number" && Number.isFinite(count.qtyNumeric)) {
+    return Number(count.qtyNumeric)
+  }
+  const raw = String(count.rawValue ?? "").trim().toLowerCase()
+  if (!raw) return null
+  if (raw === "nil" || raw === "none") return 0
+  if (/^-?\d+(\.\d+)?$/.test(raw)) return Number(raw)
+  return null
+}
+
 export default function StockClient({
   initialData,
   categories,
@@ -49,6 +63,8 @@ export default function StockClient({
 }) {
   const [query, setQuery] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
+  const [reorderOnly, setReorderOnly] = useState(false)
+  const itemsSectionRef = useRef<HTMLDivElement | null>(null)
   const latestStocktake =
     initialData.find((row) => row.asOf)?.asOf ?? "—"
   const latestStocktakeLabel =
@@ -64,6 +80,22 @@ export default function StockClient({
   )
 
   const weeklyColumns = weeklyLabels.map((entry) => entry.label)
+  const weeklyTabs = useMemo(
+    () =>
+      weeklyLabels.map((entry, index) => {
+        const baseDate = parseISO(entry.date)
+        const weekStart = startOfWeek(baseDate, { weekStartsOn: 1 })
+        const weekEnd = endOfWeek(baseDate, { weekStartsOn: 1 })
+        return {
+          id: `week-${index + 1}`,
+          label: `Week ${index + 1}`,
+          dateRange: `${format(weekStart, "MMM d")} - ${format(weekEnd, "MMM d")}`,
+          weekLabel: entry.label,
+          weekDate: entry.date,
+        }
+      }),
+    [weeklyLabels]
+  )
 
   const countsByItem = useMemo(() => {
     const map = new Map<string, StockCountRow>()
@@ -94,11 +126,16 @@ export default function StockClient({
       initialData.filter((row) => {
         if (row.reorder_level == null) return false
         const count = countsByItem.get(row.id)
-        if (!count || count.qtyNumeric == null) return false
-        return Number(count.qtyNumeric) <= Number(row.reorder_level)
+        const qtyValue = getNumericCount(count)
+        if (qtyValue == null) return false
+        return Number(qtyValue) <= Number(row.reorder_level)
       }),
     [countsByItem, initialData]
   )
+
+  const lowStockIds = useMemo(() => {
+    return new Set(lowStockItems.map((item) => item.id))
+  }, [lowStockItems])
 
   const missingCounts = useMemo(
     () => initialData.filter((row) => !countsByItem.has(row.id)),
@@ -114,9 +151,10 @@ export default function StockClient({
         row.category.toLowerCase().includes(q)
       const matchesCategory =
         categoryFilter === "all" || row.category === categoryFilter
-      return matchesQuery && matchesCategory
+      const matchesReorder = !reorderOnly || lowStockIds.has(row.id)
+      return matchesQuery && matchesCategory && matchesReorder
     })
-  }, [initialData, query, categoryFilter])
+  }, [initialData, query, categoryFilter, reorderOnly, lowStockIds])
 
   const itemRows: StockItemRow[] = filtered.map((row) => ({
     id: row.id,
@@ -136,15 +174,15 @@ export default function StockClient({
     })
 
     const latestEntry = countsByItem.get(row.id)
+    const latestQty = getNumericCount(latestEntry)
     let status: StockItem["status"] = "in-stock"
-    if (!latestEntry) {
+    if (!latestEntry || latestQty == null) {
       status = "low-stock"
-    } else if (latestEntry.qtyNumeric === 0) {
+    } else if (latestQty <= 0) {
       status = "out-of-stock"
     } else if (
       row.reorder_level != null &&
-      latestEntry.qtyNumeric != null &&
-      Number(latestEntry.qtyNumeric) <= Number(row.reorder_level)
+      Number(latestQty) <= Number(row.reorder_level)
     ) {
       status = "low-stock"
     }
@@ -178,12 +216,6 @@ export default function StockClient({
       value: `${coveragePercent}%`,
       helper: `${countedItems} of ${totalItems} counted`,
       icon: ListChecks,
-    },
-    {
-      label: "Reorder watch",
-      value: lowStockItems.length.toLocaleString(),
-      helper: "At or below reorder level",
-      icon: AlertTriangle,
     },
   ]
 
@@ -232,6 +264,38 @@ export default function StockClient({
                 </CardContent>
               </Card>
             ))}
+            <Card className="border-border bg-card/80">
+              <CardContent className="flex items-center gap-3 p-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/60">
+                  <AlertTriangle className="h-5 w-5 text-foreground" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Reorder watch
+                  </p>
+                  <p className="text-xl font-semibold text-foreground">
+                    {lowStockItems.length.toLocaleString()}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    At or below reorder level
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 border-border text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent"
+                  onClick={() => {
+                    setReorderOnly(true)
+                    itemsSectionRef.current?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "start",
+                    })
+                  }}
+                >
+                  View
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         </div>
 
@@ -249,6 +313,18 @@ export default function StockClient({
                 categories={categories}
                 onChange={setCategoryFilter}
               />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setReorderOnly((prev) => !prev)}
+                className={`h-9 border-border text-xs ${
+                  reorderOnly
+                    ? "bg-accent text-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                }`}
+              >
+                {reorderOnly ? "Reorder only" : "All items"}
+              </Button>
             </div>
             <div className="text-xs text-muted-foreground">
               Filtered: {itemRows.length} items
@@ -271,7 +347,7 @@ export default function StockClient({
                 No historical stocktake dates yet. Add a count to begin the weekly view.
               </div>
             ) : (
-              <StockTable data={weeklyRows} weeks={weeklyColumns} showSearch={false} />
+              <WeeklyTabs tabs={weeklyTabs} data={weeklyRows} />
             )}
           </CardContent>
         </Card>
@@ -317,6 +393,22 @@ export default function StockClient({
                   )
                 })
               )}
+              {lowStockItems.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full border-border text-xs text-muted-foreground hover:text-foreground hover:bg-accent"
+                  onClick={() => {
+                    setReorderOnly(true)
+                    itemsSectionRef.current?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "start",
+                    })
+                  }}
+                >
+                  View all low stock items
+                </Button>
+              )}
             </CardContent>
           </Card>
 
@@ -356,7 +448,7 @@ export default function StockClient({
           </Card>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-3" ref={itemsSectionRef}>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-foreground">

@@ -155,7 +155,8 @@ export function StockTable({
       )}
 
       <div className="border border-border rounded-xl overflow-hidden">
-        <div className="min-w-[900px] overflow-x-auto">
+        <div className="max-h-[70vh] overflow-auto md:max-h-[760px]">
+          <div className="min-w-[900px]">
         <Table>
           <TableHeader>
             <TableRow className="bg-secondary/30 hover:bg-secondary/30 border-border">
@@ -289,6 +290,7 @@ export function StockTable({
             ))}
           </TableBody>
         </Table>
+          </div>
         </div>
       </div>
     </div>
