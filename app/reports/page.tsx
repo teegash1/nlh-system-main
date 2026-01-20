@@ -504,9 +504,6 @@ export default function ReportsPage() {
                               >
                                 {receipt.status}
                               </Badge>
-                              <span className="text-[11px] text-muted-foreground">
-                                {receipt.fileName}
-                              </span>
                             </div>
                             <div className="flex flex-wrap gap-2">
                               <Button
