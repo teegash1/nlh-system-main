@@ -43,7 +43,7 @@ const highlights = [
 const quickStats = [
   {
     label: "Inventory accuracy",
-    value: "98.6%",
+    value: "99.99%",
     detail: "last 30 days",
   },
   {
@@ -61,7 +61,7 @@ export default async function LoginPage({
   const params = (await searchParams) ?? {}
   const error = resolveParam(params.error)
   const message = resolveParam(params.message)
-  const next = resolveParam(params.next) ?? "/stock"
+  const next = resolveParam(params.next) ?? "/dashboard"
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">

@@ -34,20 +34,6 @@ export async function signup(formData: FormData) {
     redirect(`/signup?error=${encodeURIComponent(error.message)}`)
   }
 
-  if (data.user && data.session) {
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .insert({ id: data.user.id, full_name: fullName, role: "viewer" })
-
-    if (profileError) {
-      redirect(
-        `/login?message=${encodeURIComponent(
-          "Account created. Please sign in."
-        )}`
-      )
-    }
-  }
-
   if (!data.session) {
     redirect(
       `/login?message=${encodeURIComponent(
@@ -56,5 +42,5 @@ export async function signup(formData: FormData) {
     )
   }
 
-  redirect("/stock")
+  redirect("/dashboard")
 }

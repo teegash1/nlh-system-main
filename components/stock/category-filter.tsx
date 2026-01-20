@@ -10,24 +10,30 @@ import {
 
 interface CategoryFilterProps {
   value: string
+  categories: string[]
   onChange: (value: string) => void
 }
 
-const categories = [
-  { value: "all", label: "All Categories" },
-  { value: "beverages", label: "Beverages" },
-  { value: "detergents", label: "Detergents & Sanitary" },
-  { value: "others", label: "Others" },
-]
+export function CategoryFilter({
+  value,
+  categories,
+  onChange,
+}: CategoryFilterProps) {
+  const options = [
+    { value: "all", label: "All Categories" },
+    ...categories.map((category) => ({
+      value: category,
+      label: category,
+    })),
+  ]
 
-export function CategoryFilter({ value, onChange }: CategoryFilterProps) {
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger className="w-[180px] bg-secondary/50 border-border text-foreground">
         <SelectValue placeholder="Select category" />
       </SelectTrigger>
       <SelectContent className="bg-card border-border">
-        {categories.map((category) => (
+        {options.map((category) => (
           <SelectItem
             key={category.value}
             value={category.value}

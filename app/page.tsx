@@ -160,7 +160,7 @@ export default function HomePage() {
               </div>
               <div className="grid gap-4 sm:grid-cols-3">
                 {[
-                  { label: "Accuracy uplift", value: "98.6%" },
+                  { label: "Accuracy uplift", value: "99.99%" },
                   { label: "Weekly reports", value: "1-click" },
                   { label: "Receipt tracing", value: "Instant" },
                 ].map((stat) => (

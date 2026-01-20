@@ -1,10 +1,13 @@
 import { AppShell } from "@/components/layout/app-shell"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { FileText, Download, Calendar, TrendingUp, Package, DollarSign, Upload, Receipt, Eye } from "lucide-react"
+import { ReceiptUploadForm } from "@/components/reports/receipt-upload-form"
+import { ReceiptActions } from "@/components/reports/receipt-actions"
+import { ReceiptStatusSelect } from "@/components/reports/receipt-status-select"
+import { ReceiptsExportButton } from "@/components/reports/receipts-export-button"
+import { createClient } from "@/lib/supabase/server"
+import { FileText, Download, Calendar, TrendingUp, Package, DollarSign, Upload, Eye } from "lucide-react"
 
 const reports = [
   {
@@ -52,79 +55,11 @@ type ReceiptEntry = {
   category: string
   amount: number
   paymentMethod: string
-  fileName: string
-  status: "Verified" | "Pending" | "Flagged"
-  reference: string
+  status: string
+  reference: string | null
+  viewUrl: string | null
+  fileName: string | null
 }
-
-const receiptEntries: ReceiptEntry[] = [
-  {
-    id: "rcp-1024",
-    date: "2026-01-22",
-    vendor: "Makena Stationers",
-    category: "Office Supplies",
-    amount: 3280,
-    paymentMethod: "Mobile Money",
-    fileName: "makena-stationers-jan-22.pdf",
-    status: "Verified",
-    reference: "EXP-1024",
-  },
-  {
-    id: "rcp-1023",
-    date: "2026-01-18",
-    vendor: "Glory Foods",
-    category: "Hospitality",
-    amount: 18450,
-    paymentMethod: "Bank Transfer",
-    fileName: "glory-foods-jan-18.pdf",
-    status: "Verified",
-    reference: "EXP-1023",
-  },
-  {
-    id: "rcp-1019",
-    date: "2026-01-09",
-    vendor: "Bright Energy",
-    category: "Utilities",
-    amount: 9650,
-    paymentMethod: "Card",
-    fileName: "bright-energy-jan-09.pdf",
-    status: "Pending",
-    reference: "EXP-1019",
-  },
-  {
-    id: "rcp-1016",
-    date: "2025-12-28",
-    vendor: "Faithful Printing",
-    category: "Print Materials",
-    amount: 7420,
-    paymentMethod: "Mobile Money",
-    fileName: "faithful-printing-dec-28.jpg",
-    status: "Verified",
-    reference: "EXP-1016",
-  },
-  {
-    id: "rcp-1012",
-    date: "2025-12-17",
-    vendor: "Unity Sound",
-    category: "Equipment",
-    amount: 22400,
-    paymentMethod: "Bank Transfer",
-    fileName: "unity-sound-dec-17.pdf",
-    status: "Flagged",
-    reference: "EXP-1012",
-  },
-  {
-    id: "rcp-1008",
-    date: "2025-11-30",
-    vendor: "Mercy Cleaning",
-    category: "Facilities",
-    amount: 5120,
-    paymentMethod: "Cash",
-    fileName: "mercy-cleaning-nov-30.png",
-    status: "Verified",
-    reference: "EXP-1008",
-  },
-]
 
 const receiptCategories = [
   "Hospitality",
@@ -179,19 +114,82 @@ const formatMonthLabel = (value: string) => {
   return `${monthLabel} ${year}`
 }
 
-const sortedReceipts = [...receiptEntries].sort((a, b) => b.date.localeCompare(a.date))
-const receiptsByMonth = sortedReceipts.reduce((groups, receipt) => {
-  const monthLabel = formatMonthLabel(receipt.date)
-  const existing = groups.get(monthLabel)
-  if (existing) {
-    existing.push(receipt)
-  } else {
-    groups.set(monthLabel, [receipt])
-  }
-  return groups
-}, new Map<string, ReceiptEntry[]>())
+export default async function ReportsPage() {
+  const supabase = await createClient()
+  const { data: userData } = await supabase.auth.getUser()
+  const userId = userData.user?.id ?? null
+  let canUpdateStatus = false
+  let receipts: ReceiptEntry[] = []
 
-export default function ReportsPage() {
+  if (userId) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .maybeSingle()
+
+    canUpdateStatus = profile?.role === "admin"
+
+    const { data, error } = await supabase
+      .from("receipts")
+      .select(
+        "id, receipt_date, vendor, category, amount, payment_method, status, reference, file_path"
+      )
+      .eq("user_id", userId)
+      .order("receipt_date", { ascending: false })
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    const signedUrls = await Promise.all(
+      (data ?? []).map(async (row) => {
+        if (!row.file_path) {
+          return { id: row.id, viewUrl: null, fileName: null }
+        }
+        const { data: signed } = await supabase.storage
+          .from("receipts")
+          .createSignedUrl(row.file_path, 60 * 60)
+        const fileName = row.file_path.split("/").pop() ?? null
+        return { id: row.id, viewUrl: signed?.signedUrl ?? null, fileName }
+      })
+    )
+
+    const urlMap = new Map(
+      signedUrls.map((entry) => [entry.id, entry])
+    )
+
+    receipts = (data ?? []).map((row) => {
+      const urlEntry = urlMap.get(row.id)
+      return {
+        id: row.id,
+        date: row.receipt_date,
+        vendor: row.vendor,
+        category: row.category,
+        amount: Number(row.amount),
+        paymentMethod: row.payment_method,
+        status: row.status ?? "Pending",
+        reference: row.reference,
+        viewUrl: urlEntry?.viewUrl ?? null,
+        fileName: urlEntry?.fileName ?? null,
+      }
+    })
+  }
+
+  const sortedReceipts = [...receipts].sort((a, b) =>
+    b.date.localeCompare(a.date)
+  )
+  const receiptsByMonth = sortedReceipts.reduce((groups, receipt) => {
+    const monthLabel = formatMonthLabel(receipt.date)
+    const existing = groups.get(monthLabel)
+    if (existing) {
+      existing.push(receipt)
+    } else {
+      groups.set(monthLabel, [receipt])
+    }
+    return groups
+  }, new Map<string, ReceiptEntry[]>())
+
   return (
     <AppShell title="Reports" subtitle="View and generate stock reports">
       <div className="p-4 md:p-6 space-y-6">
@@ -317,120 +315,10 @@ export default function ReportsPage() {
                     <Upload className="h-5 w-5 text-chart-2" />
                   </div>
                 </div>
-                <form className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="receipt-date" className="text-foreground">
-                      Expenditure Date
-                    </Label>
-                    <Input
-                      id="receipt-date"
-                      type="date"
-                      required
-                      className="bg-secondary/40 border-border text-foreground"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="receipt-vendor" className="text-foreground">
-                      Vendor / Payee
-                    </Label>
-                    <Input
-                      id="receipt-vendor"
-                      placeholder="Vendor or ministry partner"
-                      required
-                      className="bg-secondary/40 border-border text-foreground"
-                    />
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="receipt-category" className="text-foreground">
-                        Category
-                      </Label>
-                      <select
-                        id="receipt-category"
-                        className="h-9 w-full rounded-md border border-border bg-secondary/40 px-3 text-sm text-foreground"
-                        required
-                        defaultValue=""
-                      >
-                        <option value="" disabled>
-                          Select category
-                        </option>
-                        {receiptCategories.map((category) => (
-                          <option key={category} value={category}>
-                            {category}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="receipt-method" className="text-foreground">
-                        Payment Method
-                      </Label>
-                      <select
-                        id="receipt-method"
-                        className="h-9 w-full rounded-md border border-border bg-secondary/40 px-3 text-sm text-foreground"
-                        required
-                        defaultValue=""
-                      >
-                        <option value="" disabled>
-                          Select method
-                        </option>
-                        {paymentMethods.map((method) => (
-                          <option key={method} value={method}>
-                            {method}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="receipt-amount" className="text-foreground">
-                        Amount (KES)
-                      </Label>
-                      <Input
-                        id="receipt-amount"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00"
-                        required
-                        className="bg-secondary/40 border-border text-foreground"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="receipt-reference" className="text-foreground">
-                        Reference ID
-                      </Label>
-                      <Input
-                        id="receipt-reference"
-                        placeholder="EXP-####"
-                        className="bg-secondary/40 border-border text-foreground"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="receipt-file" className="text-foreground">
-                      Receipt File
-                    </Label>
-                    <Input
-                      id="receipt-file"
-                      type="file"
-                      accept="image/png,image/jpeg,application/pdf"
-                      required
-                      className="bg-secondary/40 border-border text-foreground"
-                    />
-                    <p className="text-[11px] text-muted-foreground">
-                      Upload PDF, JPG, or PNG. Max size 10MB.
-                    </p>
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full bg-accent text-foreground hover:bg-accent/80 border border-border premium-btn"
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    Upload Receipt
-                  </Button>
-                </form>
+                <ReceiptUploadForm
+                  categories={receiptCategories}
+                  paymentMethods={paymentMethods}
+                />
               </div>
 
               <div className="space-y-4">
@@ -441,14 +329,7 @@ export default function ReportsPage() {
                       Latest receipts grouped by month and sorted by date.
                     </p>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 border-border px-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent bg-transparent"
-                  >
-                    <Receipt className="mr-2 h-4 w-4" />
-                    Export CSV
-                  </Button>
+                  <ReceiptsExportButton receipts={receipts} />
                 </div>
 
                 <div className="hidden items-center gap-3 rounded-lg border border-border bg-secondary/30 px-4 py-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground md:grid md:grid-cols-[110px_1.4fr_1fr_110px_110px_160px]">
@@ -460,37 +341,44 @@ export default function ReportsPage() {
                   <span>Actions</span>
                 </div>
 
-                {Array.from(receiptsByMonth.entries()).map(([monthLabel, receipts]) => (
-                  <div key={monthLabel} className="space-y-3">
-                    <div className="flex items-center gap-2 text-[11px] font-semibold text-foreground">
-                      <span className="h-2 w-2 rounded-full bg-chart-1" />
-                      <span>{monthLabel}</span>
-                    </div>
-                    <div className="space-y-3">
-                      {receipts.map((receipt) => (
-                        <div
-                          key={receipt.id}
-                          className="rounded-xl border border-border bg-secondary/20 p-4"
-                        >
-                          <div className="flex flex-col gap-3 md:grid md:grid-cols-[110px_1.4fr_1fr_110px_110px_160px] md:items-center">
-                            <div className="text-xs text-foreground">
-                              <p className="font-medium">{formatShortDate(receipt.date)}</p>
-                              <p className="text-[10px] text-muted-foreground">
-                                {receipt.reference}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs font-medium text-foreground">
-                                {receipt.vendor}
-                              </p>
-                              <p className="text-[11px] text-muted-foreground">
-                                {receipt.paymentMethod}
-                              </p>
-                            </div>
-                            <div className="text-xs text-foreground">{receipt.category}</div>
-                            <div className="text-xs font-semibold text-foreground">
-                              KES {receipt.amount.toLocaleString()}
-                            </div>
+                {receipts.length === 0 ? (
+                  <div className="rounded-xl border border-border bg-secondary/20 p-4 text-sm text-muted-foreground">
+                    No receipts uploaded yet.
+                  </div>
+                ) : (
+                  Array.from(receiptsByMonth.entries()).map(([monthLabel, receipts]) => (
+                    <div key={monthLabel} className="space-y-3">
+                      <div className="flex items-center gap-2 text-[11px] font-semibold text-foreground">
+                        <span className="h-2 w-2 rounded-full bg-chart-1" />
+                        <span>{monthLabel}</span>
+                      </div>
+                      <div className="space-y-3">
+                        {receipts.map((receipt) => (
+                          <div
+                            key={receipt.id}
+                            className="rounded-xl border border-border bg-secondary/20 p-4"
+                          >
+                            <div className="flex flex-col gap-3 md:grid md:grid-cols-[110px_1.4fr_1fr_110px_110px_160px] md:items-center">
+                              <div className="text-xs text-foreground">
+                                <p className="font-medium">{formatShortDate(receipt.date)}</p>
+                                {receipt.reference && (
+                                  <p className="text-[10px] text-muted-foreground">
+                                    {receipt.reference}
+                                  </p>
+                                )}
+                              </div>
+                              <div>
+                                <p className="text-xs font-medium text-foreground">
+                                  {receipt.vendor}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground">
+                                  {receipt.paymentMethod}
+                                </p>
+                              </div>
+                              <div className="text-xs text-foreground">{receipt.category}</div>
+                              <div className="text-xs font-semibold text-foreground">
+                                KES {Number.isFinite(receipt.amount) ? receipt.amount.toLocaleString() : "0"}
+                              </div>
                             <div className="flex items-center gap-2">
                               <Badge
                                 variant="outline"
@@ -504,31 +392,87 @@ export default function ReportsPage() {
                               >
                                 {receipt.status}
                               </Badge>
+                              {canUpdateStatus && (
+                                <div className="w-[110px]">
+                                  <ReceiptStatusSelect
+                                    receiptId={receipt.id}
+                                    initialStatus={receipt.status}
+                                  />
+                                </div>
+                              )}
                             </div>
                             <div className="flex flex-wrap gap-2 md:flex-nowrap">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 border-border px-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent bg-transparent"
-                              >
-                                <Eye className="mr-2 h-4 w-4" />
-                                View
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 border-border px-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent bg-transparent"
-                              >
-                                <Download className="mr-2 h-4 w-4" />
-                                Download
-                              </Button>
+                              {receipt.viewUrl ? (
+                                <Button
+                                  asChild
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 border-border px-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent bg-transparent"
+                                >
+                                  <a
+                                    href={receipt.viewUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    View
+                                  </a>
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled
+                                  className="h-8 border-border px-2 text-[11px] text-muted-foreground bg-transparent"
+                                >
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View
+                                </Button>
+                              )}
+                              {receipt.viewUrl ? (
+                                <Button
+                                  asChild
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 border-border px-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent bg-transparent"
+                                >
+                                  <a href={receipt.viewUrl} download>
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Download
+                                  </a>
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled
+                                  className="h-8 border-border px-2 text-[11px] text-muted-foreground bg-transparent"
+                                >
+                                  <Download className="mr-2 h-4 w-4" />
+                                  Download
+                                </Button>
+                              )}
+                              <ReceiptActions
+                                receipt={{
+                                  id: receipt.id,
+                                  receiptDate: receipt.date,
+                                  vendor: receipt.vendor,
+                                  category: receipt.category,
+                                  paymentMethod: receipt.paymentMethod,
+                                  amount: receipt.amount,
+                                  reference: receipt.reference,
+                                }}
+                                categories={receiptCategories}
+                                paymentMethods={paymentMethods}
+                              />
                             </div>
                           </div>
                         </div>
                       ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           </CardContent>
