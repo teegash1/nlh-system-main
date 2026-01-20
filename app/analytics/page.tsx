@@ -275,7 +275,7 @@ export default async function AnalyticsPage() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <StatCard
             title="Avg Monthly Spend"
             value={
@@ -327,7 +327,6 @@ export default async function AnalyticsPage() {
             changeLabel={hasAnalyticsData ? "Balance after expenses" : emptyLabel}
             trend="neutral"
             icon={<Wallet className="h-5 w-5 text-chart-3" />}
-            className="col-span-2 md:col-span-1"
           />
         </div>
 
