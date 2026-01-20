@@ -26,7 +26,7 @@ import {
 } from "lucide-react"
 
 const mobileMenuItems = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Stock Taking", href: "/stock", icon: Package },
   { name: "Reports", href: "/reports", icon: FileText },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },

@@ -3,6 +3,7 @@ import { updateSession } from "@/lib/supabase/middleware"
 import { createServerClient } from "@supabase/ssr"
 
 const PROTECTED_PREFIXES = [
+  "/dashboard",
   "/stock",
   "/analytics",
   "/reports",
