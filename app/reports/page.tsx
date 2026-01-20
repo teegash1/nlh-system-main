@@ -436,22 +436,22 @@ export default function ReportsPage() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-foreground">Receipt archive</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs font-semibold text-foreground">Receipt archive</p>
+                    <p className="text-[11px] text-muted-foreground">
                       Latest receipts grouped by month and sorted by date.
                     </p>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="border-border text-muted-foreground hover:text-foreground hover:bg-accent bg-transparent"
+                    className="h-8 border-border px-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent bg-transparent"
                   >
                     <Receipt className="mr-2 h-4 w-4" />
                     Export CSV
                   </Button>
                 </div>
 
-                <div className="hidden items-center gap-3 rounded-lg border border-border bg-secondary/30 px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-muted-foreground md:grid md:grid-cols-[120px_1.3fr_1fr_120px_1fr_auto]">
+                <div className="hidden items-center gap-3 rounded-lg border border-border bg-secondary/30 px-4 py-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground md:grid md:grid-cols-[110px_1.3fr_1fr_110px_1fr_auto]">
                   <span>Date</span>
                   <span>Vendor</span>
                   <span>Category</span>
@@ -462,7 +462,7 @@ export default function ReportsPage() {
 
                 {Array.from(receiptsByMonth.entries()).map(([monthLabel, receipts]) => (
                   <div key={monthLabel} className="space-y-3">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                    <div className="flex items-center gap-2 text-[11px] font-semibold text-foreground">
                       <span className="h-2 w-2 rounded-full bg-chart-1" />
                       <span>{monthLabel}</span>
                     </div>
@@ -472,29 +472,29 @@ export default function ReportsPage() {
                           key={receipt.id}
                           className="rounded-xl border border-border bg-secondary/20 p-4"
                         >
-                          <div className="flex flex-col gap-3 md:grid md:grid-cols-[120px_1.3fr_1fr_120px_1fr_auto] md:items-center">
-                            <div className="text-sm text-foreground">
+                          <div className="flex flex-col gap-3 md:grid md:grid-cols-[110px_1.3fr_1fr_110px_1fr_auto] md:items-center">
+                            <div className="text-xs text-foreground">
                               <p className="font-medium">{formatShortDate(receipt.date)}</p>
-                              <p className="text-[11px] text-muted-foreground">
+                              <p className="text-[10px] text-muted-foreground">
                                 {receipt.reference}
                               </p>
                             </div>
                             <div>
-                              <p className="text-sm font-medium text-foreground">
+                              <p className="text-xs font-medium text-foreground">
                                 {receipt.vendor}
                               </p>
-                              <p className="text-xs text-muted-foreground">
+                              <p className="text-[11px] text-muted-foreground">
                                 {receipt.paymentMethod}
                               </p>
                             </div>
-                            <div className="text-sm text-foreground">{receipt.category}</div>
-                            <div className="text-sm font-semibold text-foreground">
+                            <div className="text-xs text-foreground">{receipt.category}</div>
+                            <div className="text-xs font-semibold text-foreground">
                               KES {receipt.amount.toLocaleString()}
                             </div>
                             <div className="flex items-center gap-2">
                               <Badge
                                 variant="outline"
-                                className={`border ${
+                                className={`border text-[10px] ${
                                   receipt.status === "Verified"
                                     ? "border-chart-2/40 text-chart-2 bg-chart-2/10"
                                     : receipt.status === "Pending"
@@ -504,7 +504,7 @@ export default function ReportsPage() {
                               >
                                 {receipt.status}
                               </Badge>
-                              <span className="text-xs text-muted-foreground">
+                              <span className="text-[11px] text-muted-foreground">
                                 {receipt.fileName}
                               </span>
                             </div>
@@ -512,7 +512,7 @@ export default function ReportsPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="border-border text-muted-foreground hover:text-foreground hover:bg-accent bg-transparent"
+                                className="h-8 border-border px-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent bg-transparent"
                               >
                                 <Eye className="mr-2 h-4 w-4" />
                                 View
@@ -520,7 +520,7 @@ export default function ReportsPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="border-border text-muted-foreground hover:text-foreground hover:bg-accent bg-transparent"
+                                className="h-8 border-border px-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent bg-transparent"
                               >
                                 <Download className="mr-2 h-4 w-4" />
                                 Download
