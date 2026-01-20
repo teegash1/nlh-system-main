@@ -64,7 +64,8 @@ export default function StockClient({
   const [query, setQuery] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [reorderOnly, setReorderOnly] = useState(false)
-  const itemsSectionRef = useRef<HTMLDivElement | null>(null)
+  const [weeklyStatusFilter, setWeeklyStatusFilter] = useState<"all" | "risk">("all")
+  const weeklySectionRef = useRef<HTMLDivElement | null>(null)
   const latestStocktake =
     initialData.find((row) => row.asOf)?.asOf ?? "—"
   const latestStocktakeLabel =
@@ -124,10 +125,11 @@ export default function StockClient({
   const lowStockItems = useMemo(
     () =>
       initialData.filter((row) => {
-        if (row.reorder_level == null) return false
         const count = countsByItem.get(row.id)
         const qtyValue = getNumericCount(count)
         if (qtyValue == null) return false
+        if (Number(qtyValue) <= 0) return true
+        if (row.reorder_level == null) return false
         return Number(qtyValue) <= Number(row.reorder_level)
       }),
     [countsByItem, initialData]
@@ -197,6 +199,13 @@ export default function StockClient({
       status,
     }
   })
+
+  const weeklyRowsFiltered =
+    weeklyStatusFilter === "risk"
+      ? weeklyRows.filter(
+          (row) => row.status === "low-stock" || row.status === "out-of-stock"
+        )
+      : weeklyRows
 
   const summaryCards = [
     {
@@ -271,13 +280,13 @@ export default function StockClient({
                 </div>
                 <div className="flex-1">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Reorder watch
+                    Items to reorder
                   </p>
                   <p className="text-xl font-semibold text-foreground">
                     {lowStockItems.length.toLocaleString()}
                   </p>
                   <p className="text-[11px] text-muted-foreground">
-                    At or below reorder level
+                    Low stock or out of stock
                   </p>
                 </div>
                 <Button
@@ -285,10 +294,10 @@ export default function StockClient({
                   size="sm"
                   className="h-8 border-border text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent"
                   onClick={() => {
-                    setReorderOnly(true)
-                    itemsSectionRef.current?.scrollIntoView({
+                    setWeeklyStatusFilter("risk")
+                    weeklySectionRef.current?.scrollIntoView({
                       behavior: "smooth",
-                      block: "start",
+                      block: "center",
                     })
                   }}
                 >
@@ -333,13 +342,31 @@ export default function StockClient({
         </Card>
 
         <Card className="border-border bg-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold text-foreground">
-              Weekly Stocktake Matrix
-            </CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">
-              Compare the last {weeklyColumns.length || 0} stocktake dates across all items.
-            </CardDescription>
+          <CardHeader className="pb-2" ref={weeklySectionRef}>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="text-sm font-semibold text-foreground">
+                  Weekly Stocktake Matrix
+                </CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">
+                  Compare the last {weeklyColumns.length || 0} stocktake dates across all items.
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setWeeklyStatusFilter((prev) => (prev === "risk" ? "all" : "risk"))
+                }
+                className={`h-8 border-border text-[11px] ${
+                  weeklyStatusFilter === "risk"
+                    ? "bg-accent text-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                }`}
+              >
+                {weeklyStatusFilter === "risk" ? "Show all" : "Low + Out only"}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {weeklyColumns.length === 0 ? (
@@ -347,7 +374,7 @@ export default function StockClient({
                 No historical stocktake dates yet. Add a count to begin the weekly view.
               </div>
             ) : (
-              <WeeklyTabs tabs={weeklyTabs} data={weeklyRows} />
+              <WeeklyTabs tabs={weeklyTabs} data={weeklyRowsFiltered} />
             )}
           </CardContent>
         </Card>
@@ -370,6 +397,11 @@ export default function StockClient({
               ) : (
                 lowStockItems.slice(0, 4).map((item) => {
                   const count = countsByItem.get(item.id)
+                  const remainingQty = getNumericCount(count)
+                  const remainingLabel =
+                    remainingQty == null
+                      ? count?.rawValue ?? "—"
+                      : `${remainingQty} ${count?.qtyUnit ?? item.unit}`
                   return (
                     <div
                       key={item.id}
@@ -382,9 +414,7 @@ export default function StockClient({
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-foreground">
-                          {count?.qtyNumeric ?? "—"} {count?.qtyUnit ?? item.unit}
-                        </p>
+                        <p className="font-semibold text-foreground">{remainingLabel}</p>
                         <Badge variant="outline" className="border-chart-4/40 text-chart-4">
                           Low
                         </Badge>
@@ -399,10 +429,10 @@ export default function StockClient({
                   size="sm"
                   className="w-full border-border text-xs text-muted-foreground hover:text-foreground hover:bg-accent"
                   onClick={() => {
-                    setReorderOnly(true)
-                    itemsSectionRef.current?.scrollIntoView({
+                    setWeeklyStatusFilter("risk")
+                    weeklySectionRef.current?.scrollIntoView({
                       behavior: "smooth",
-                      block: "start",
+                      block: "center",
                     })
                   }}
                 >
@@ -448,7 +478,7 @@ export default function StockClient({
           </Card>
         </div>
 
-        <div className="space-y-3" ref={itemsSectionRef}>
+        <div className="space-y-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-foreground">
