@@ -6,12 +6,15 @@ import { ReceiptUploadForm } from "@/components/reports/receipt-upload-form"
 import { ReceiptActions } from "@/components/reports/receipt-actions"
 import { ReceiptStatusSelect } from "@/components/reports/receipt-status-select"
 import { ReceiptsExportButton } from "@/components/reports/receipts-export-button"
+import { CategoryManagerDialog } from "@/components/stock/category-manager-dialog"
+import { ReportExportMenu } from "@/components/reports/report-export-menu"
 import { createClient } from "@/lib/supabase/server"
-import { FileText, Download, Calendar, TrendingUp, Package, DollarSign, Upload, Eye } from "lucide-react"
+import { FileText, Download, Calendar, TrendingUp, Package, DollarSign, Upload } from "lucide-react"
 
 const reports = [
   {
     id: "1",
+    reportType: "weekly-stock",
     title: "Weekly Stock Report",
     description: "Comprehensive weekly inventory analysis",
     date: "January 20, 2026",
@@ -21,6 +24,7 @@ const reports = [
   },
   {
     id: "2",
+    reportType: "monthly-expense",
     title: "Monthly Expense Report",
     description: "Monthly spending breakdown by category",
     date: "January 1, 2026",
@@ -30,6 +34,7 @@ const reports = [
   },
   {
     id: "3",
+    reportType: "inventory-valuation",
     title: "Inventory Valuation",
     description: "Current stock value assessment",
     date: "January 15, 2026",
@@ -39,6 +44,7 @@ const reports = [
   },
   {
     id: "4",
+    reportType: "usage-trends",
     title: "Usage Trends Report",
     description: "Stock consumption patterns and trends",
     date: "December 31, 2025",
@@ -60,15 +66,6 @@ type ReceiptEntry = {
   viewUrl: string | null
   fileName: string | null
 }
-
-const receiptCategories = [
-  "Hospitality",
-  "Office Supplies",
-  "Utilities",
-  "Facilities",
-  "Equipment",
-  "Print Materials",
-]
 
 const paymentMethods = ["Cash", "Mobile Money", "Bank Transfer", "Card"]
 
@@ -120,6 +117,23 @@ export default async function ReportsPage() {
   const userId = userData.user?.id ?? null
   let canUpdateStatus = false
   let receipts: ReceiptEntry[] = []
+  let receiptCategories: string[] = []
+  let categoryOptions: { id: string; name: string }[] = []
+
+  const { data: categoriesData, error: categoriesError } = await supabase
+    .from("inventory_categories")
+    .select("id, name")
+    .order("name")
+
+  if (categoriesError) {
+    throw new Error(categoriesError.message)
+  }
+
+  receiptCategories = (categoriesData ?? []).map((category) => category.name)
+  categoryOptions = (categoriesData ?? []).map((category) => ({
+    id: category.id,
+    name: category.name,
+  }))
 
   if (userId) {
     const { data: profile } = await supabase
@@ -277,14 +291,10 @@ export default async function ReportsPage() {
                       <span className="text-[10px] text-muted-foreground">{report.date}</span>
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-border text-muted-foreground hover:text-foreground hover:bg-accent premium-btn bg-transparent"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Download
-                  </Button>
+                  <ReportExportMenu
+                    reportType={report.reportType}
+                    reportTitle={report.title}
+                  />
                 </div>
               ))}
             </div>
@@ -311,8 +321,11 @@ export default async function ReportsPage() {
                       Attach proof for each expenditure.
                     </p>
                   </div>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-chart-2/20">
-                    <Upload className="h-5 w-5 text-chart-2" />
+                  <div className="flex items-center gap-2">
+                    <CategoryManagerDialog categories={categoryOptions} />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-chart-2/20">
+                      <Upload className="h-5 w-5 text-chart-2" />
+                    </div>
                   </div>
                 </div>
                 <ReceiptUploadForm
@@ -332,9 +345,9 @@ export default async function ReportsPage() {
                   <ReceiptsExportButton receipts={receipts} />
                 </div>
 
-                <div className="hidden items-center gap-3 rounded-lg border border-border bg-secondary/30 px-4 py-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground md:grid md:grid-cols-[110px_1.4fr_1fr_110px_110px_160px]">
+                <div className="hidden items-center gap-3 rounded-lg border border-border bg-secondary/30 px-4 py-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground md:grid md:grid-cols-[110px_1.4fr_1fr_110px_160px_120px]">
                   <span>Date</span>
-                  <span>Vendor</span>
+                  <span>Shoper</span>
                   <span>Category</span>
                   <span>Amount</span>
                   <span>Receipt</span>
@@ -358,7 +371,7 @@ export default async function ReportsPage() {
                             key={receipt.id}
                             className="rounded-xl border border-border bg-secondary/20 p-4"
                           >
-                            <div className="flex flex-col gap-3 md:grid md:grid-cols-[110px_1.4fr_1fr_110px_110px_160px] md:items-center">
+                            <div className="flex flex-col gap-3 md:grid md:grid-cols-[110px_1.4fr_1fr_110px_160px_120px] md:items-center">
                               <div className="text-xs text-foreground">
                                 <p className="font-medium">{formatShortDate(receipt.date)}</p>
                                 {receipt.reference && (
@@ -379,7 +392,7 @@ export default async function ReportsPage() {
                               <div className="text-xs font-semibold text-foreground">
                                 KES {Number.isFinite(receipt.amount) ? receipt.amount.toLocaleString() : "0"}
                               </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-col items-start gap-2">
                               <Badge
                                 variant="outline"
                                 className={`border text-[10px] ${
@@ -401,57 +414,7 @@ export default async function ReportsPage() {
                                 </div>
                               )}
                             </div>
-                            <div className="flex flex-wrap gap-2 md:flex-nowrap">
-                              {receipt.viewUrl ? (
-                                <Button
-                                  asChild
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 border-border px-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent bg-transparent"
-                                >
-                                  <a
-                                    href={receipt.viewUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                  >
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    View
-                                  </a>
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  disabled
-                                  className="h-8 border-border px-2 text-[11px] text-muted-foreground bg-transparent"
-                                >
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  View
-                                </Button>
-                              )}
-                              {receipt.viewUrl ? (
-                                <Button
-                                  asChild
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 border-border px-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent bg-transparent"
-                                >
-                                  <a href={receipt.viewUrl} download>
-                                    <Download className="mr-2 h-4 w-4" />
-                                    Download
-                                  </a>
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  disabled
-                                  className="h-8 border-border px-2 text-[11px] text-muted-foreground bg-transparent"
-                                >
-                                  <Download className="mr-2 h-4 w-4" />
-                                  Download
-                                </Button>
-                              )}
+                            <div className="md:justify-self-center">
                               <ReceiptActions
                                 receipt={{
                                   id: receipt.id,
@@ -462,6 +425,7 @@ export default async function ReportsPage() {
                                   amount: receipt.amount,
                                   reference: receipt.reference,
                                 }}
+                                viewUrl={receipt.viewUrl}
                                 categories={receiptCategories}
                                 paymentMethods={paymentMethods}
                               />

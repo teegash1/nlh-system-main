@@ -22,7 +22,7 @@ export function ReceiptsExportButton({ receipts }: ReceiptsExportButtonProps) {
   const handleExport = () => {
     const headers = [
       "Date",
-      "Vendor",
+      "Shoper",
       "Category",
       "Amount",
       "Payment Method",

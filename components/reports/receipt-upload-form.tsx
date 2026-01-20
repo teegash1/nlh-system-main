@@ -18,6 +18,7 @@ export function ReceiptUploadForm({
   categories,
   paymentMethods,
 }: ReceiptUploadFormProps) {
+  const hasCategories = categories.length > 0
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
@@ -34,6 +35,11 @@ export function ReceiptUploadForm({
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
     setError(null)
+
+    if (!hasCategories) {
+      setError("Add at least one category before uploading a receipt.")
+      return
+    }
 
     const payload = new FormData()
     payload.set("receiptDate", formData.receiptDate)
@@ -95,11 +101,11 @@ export function ReceiptUploadForm({
       </div>
       <div className="space-y-2">
         <Label htmlFor="receipt-vendor" className="text-foreground">
-          Vendor / Payee
+          Shoper
         </Label>
         <Input
           id="receipt-vendor"
-          placeholder="Vendor or ministry partner"
+          placeholder="Shoper name"
           required
           value={formData.vendor}
           onChange={(event) =>
@@ -121,9 +127,10 @@ export function ReceiptUploadForm({
             onChange={(event) =>
               setFormData({ ...formData, category: event.target.value })
             }
+            disabled={!hasCategories}
           >
             <option value="" disabled>
-              Select category
+              {hasCategories ? "Select category" : "No categories yet"}
             </option>
             {categories.map((category) => (
               <option key={category} value={category}>
@@ -131,6 +138,11 @@ export function ReceiptUploadForm({
               </option>
             ))}
           </select>
+          {!hasCategories && (
+            <p className="text-[11px] text-muted-foreground">
+              Use Manage Categories to add one before uploading.
+            </p>
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="receipt-method" className="text-foreground">
@@ -208,7 +220,7 @@ export function ReceiptUploadForm({
       </div>
       <Button
         type="submit"
-        disabled={isPending}
+        disabled={isPending || !hasCategories}
         className="w-full bg-accent text-foreground hover:bg-accent/80 border border-border premium-btn"
       >
         <Upload className="mr-2 h-4 w-4" />

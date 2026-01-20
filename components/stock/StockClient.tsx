@@ -9,12 +9,23 @@ import { Button } from "@/components/ui/button"
 import { CategoryFilter } from "@/components/stock/category-filter"
 import { AddItemDialog } from "@/components/stock/add-item-dialog"
 import { AddCountDialog } from "@/components/stock/add-count-dialog"
+import { CategoryManagerDialog } from "@/components/stock/category-manager-dialog"
+import { DateFilter } from "@/components/stock/date-filter"
 import { CountsTable, type StockCountRow } from "@/components/stock/counts-table"
 import { ItemsTable, type StockItemRow } from "@/components/stock/items-table"
 import type { StockItem } from "@/components/stock/stock-table"
 import { WeeklyTabs } from "@/components/stock/weekly-tabs"
 import { AlertTriangle, CalendarDays, Layers, ListChecks, Package } from "lucide-react"
-import { endOfWeek, format, parseISO, startOfWeek } from "date-fns"
+import {
+  endOfMonth,
+  endOfWeek,
+  format,
+  parseISO,
+  startOfMonth,
+  startOfWeek,
+  startOfYear,
+  subMonths,
+} from "date-fns"
 
 export type StockRow = {
   id: string
@@ -34,6 +45,8 @@ type WeeklyCount = {
   qtyUnit: string | null
 }
 
+type DateFilterType = "this-week" | "this-month" | "last-3-months" | "ytd" | "custom"
+
 const getNumericCount = (count?: StockCountRow | null) => {
   if (!count) return null
   if (typeof count.qtyNumeric === "number" && Number.isFinite(count.qtyNumeric)) {
@@ -49,22 +62,30 @@ const getNumericCount = (count?: StockCountRow | null) => {
 export default function StockClient({
   initialData,
   categories,
+  categoryOptions,
   items,
   counts,
   weeklyDates,
   weeklyCounts,
+  countedItemIds,
 }: {
   initialData: StockRow[]
   categories: string[]
+  categoryOptions: { id: string; name: string }[]
   items: { id: string; name: string; unit: string }[]
   counts: StockCountRow[]
   weeklyDates: string[]
   weeklyCounts: WeeklyCount[]
+  countedItemIds: string[]
 }) {
   const [query, setQuery] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [reorderOnly, setReorderOnly] = useState(false)
   const [weeklyStatusFilter, setWeeklyStatusFilter] = useState<"all" | "risk">("all")
+  const [dateRangeFilter, setDateRangeFilter] = useState<{
+    from: Date
+    to: Date
+  } | null>(null)
   const weeklySectionRef = useRef<HTMLDivElement | null>(null)
   const latestStocktake =
     initialData.find((row) => row.asOf)?.asOf ?? "—"
@@ -98,6 +119,14 @@ export default function StockClient({
     [weeklyLabels]
   )
 
+  const visibleWeeklyTabs = useMemo(() => {
+    if (!dateRangeFilter) return weeklyTabs
+    return weeklyTabs.filter((tab) => {
+      const date = parseISO(tab.weekDate)
+      return date >= dateRangeFilter.from && date <= dateRangeFilter.to
+    })
+  }, [dateRangeFilter, weeklyTabs])
+
   const countsByItem = useMemo(() => {
     const map = new Map<string, StockCountRow>()
     counts.forEach((count) => {
@@ -105,6 +134,11 @@ export default function StockClient({
     })
     return map
   }, [counts])
+
+  const countedItemSet = useMemo(
+    () => new Set(countedItemIds),
+    [countedItemIds]
+  )
 
   const weeklyCountsByItem = useMemo(() => {
     const map = new Map<string, Map<string, WeeklyCount>>()
@@ -140,8 +174,8 @@ export default function StockClient({
   }, [lowStockItems])
 
   const missingCounts = useMemo(
-    () => initialData.filter((row) => !countsByItem.has(row.id)),
-    [countsByItem, initialData]
+    () => initialData.filter((row) => !countedItemSet.has(row.id)),
+    [countedItemSet, initialData]
   )
 
   const filtered = useMemo(() => {
@@ -207,6 +241,35 @@ export default function StockClient({
         )
       : weeklyRows
 
+  const handleDateFilter = (
+    filter: DateFilterType,
+    range?: { from: Date; to: Date }
+  ) => {
+    const now = new Date()
+    if (filter === "custom" && range?.from && range?.to) {
+      setDateRangeFilter({ from: range.from, to: range.to })
+      return
+    }
+    if (filter === "this-week") {
+      setDateRangeFilter({
+        from: startOfWeek(now, { weekStartsOn: 1 }),
+        to: endOfWeek(now, { weekStartsOn: 1 }),
+      })
+      return
+    }
+    if (filter === "this-month") {
+      setDateRangeFilter({ from: startOfMonth(now), to: endOfMonth(now) })
+      return
+    }
+    if (filter === "last-3-months") {
+      setDateRangeFilter({ from: subMonths(now, 3), to: now })
+      return
+    }
+    if (filter === "ytd") {
+      setDateRangeFilter({ from: startOfYear(now), to: now })
+    }
+  }
+
   const summaryCards = [
     {
       label: "Items tracked",
@@ -253,6 +316,7 @@ export default function StockClient({
             <div className="flex flex-col gap-2 sm:flex-row">
               <AddItemDialog categories={categories} />
               <AddCountDialog items={items} />
+              <CategoryManagerDialog categories={categoryOptions} />
             </div>
           </div>
 
@@ -322,6 +386,7 @@ export default function StockClient({
                 categories={categories}
                 onChange={setCategoryFilter}
               />
+              <DateFilter onFilterChange={handleDateFilter} />
               <Button
                 variant="outline"
                 size="sm"
@@ -349,7 +414,7 @@ export default function StockClient({
                   Weekly Stocktake Matrix
                 </CardTitle>
                 <CardDescription className="text-xs text-muted-foreground">
-                  Compare the last {weeklyColumns.length || 0} stocktake dates across all items.
+                  Compare the last {visibleWeeklyTabs.length || 0} stocktake dates across all items.
                 </CardDescription>
               </div>
               <Button
@@ -369,12 +434,12 @@ export default function StockClient({
             </div>
           </CardHeader>
           <CardContent>
-            {weeklyColumns.length === 0 ? (
+            {visibleWeeklyTabs.length === 0 ? (
               <div className="rounded-lg border border-border bg-secondary/30 px-3 py-2 text-xs text-muted-foreground">
-                No historical stocktake dates yet. Add a count to begin the weekly view.
+                No stocktake dates in the selected range yet.
               </div>
             ) : (
-              <WeeklyTabs tabs={weeklyTabs} data={weeklyRowsFiltered} />
+              <WeeklyTabs tabs={visibleWeeklyTabs} data={weeklyRowsFiltered} />
             )}
           </CardContent>
         </Card>

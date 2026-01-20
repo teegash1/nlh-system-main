@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { CalendarIcon } from "lucide-react"
-import { format } from "date-fns"
+import { addWeeks, endOfWeek, format, startOfWeek } from "date-fns"
 
 type FilterType = "this-week" | "this-month" | "last-3-months" | "ytd" | "custom"
 
@@ -28,6 +28,7 @@ export function DateFilter({ onFilterChange }: DateFilterProps) {
     to: undefined,
   })
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
+  const weekOptions = { weekStartsOn: 1 as const }
 
   const filters: { id: FilterType; label: string }[] = [
     { id: "this-week", label: "This Week" },
@@ -45,10 +46,24 @@ export function DateFilter({ onFilterChange }: DateFilterProps) {
   }
 
   const handleCustomDateSelect = (range: { from: Date | undefined; to: Date | undefined }) => {
-    setCustomDateRange(range)
-    if (range.from && range.to) {
-      onFilterChange?.("custom", { from: range.from, to: range.to })
+    let { from, to } = range
+    if (from) {
+      from = startOfWeek(from, weekOptions)
     }
+    if (to) {
+      to = endOfWeek(to, weekOptions)
+    }
+    if (from && to) {
+      const maxEnd = endOfWeek(addWeeks(from, 3), weekOptions)
+      if (to > maxEnd) {
+        to = maxEnd
+      }
+      const nextRange = { from, to }
+      setCustomDateRange(nextRange)
+      onFilterChange?.("custom", nextRange)
+      return
+    }
+    setCustomDateRange({ from, to })
   }
 
   return (
@@ -85,6 +100,9 @@ export function DateFilter({ onFilterChange }: DateFilterProps) {
                 numberOfMonths={2}
                 className="bg-card"
               />
+              <div className="px-4 pb-4 text-[11px] text-muted-foreground">
+                Range snaps to Monday-Sunday, max 4 weeks.
+              </div>
             </PopoverContent>
           </Popover>
         ) : (

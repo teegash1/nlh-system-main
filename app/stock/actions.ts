@@ -62,6 +62,67 @@ export async function createItem(formData: FormData) {
   return { ok: true }
 }
 
+export async function createCategory(formData: FormData) {
+  const name = String(formData.get("name") || "").trim()
+
+  if (!name) {
+    return { ok: false, message: "Category name is required." }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase.from("inventory_categories").insert({ name })
+
+  if (error) {
+    return { ok: false, message: error.message }
+  }
+
+  revalidatePath("/stock")
+  revalidatePath("/reports")
+  return { ok: true }
+}
+
+export async function updateCategory(formData: FormData) {
+  const id = String(formData.get("id") || "").trim()
+  const name = String(formData.get("name") || "").trim()
+
+  if (!id || !name) {
+    return { ok: false, message: "Category name is required." }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from("inventory_categories")
+    .update({ name })
+    .eq("id", id)
+
+  if (error) {
+    return { ok: false, message: error.message }
+  }
+
+  revalidatePath("/stock")
+  revalidatePath("/reports")
+  return { ok: true }
+}
+
+export async function deleteCategory(formData: FormData) {
+  const id = String(formData.get("id") || "").trim()
+
+  if (!id) {
+    return { ok: false, message: "Missing category ID." }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase.from("inventory_categories").delete().eq("id", id)
+
+  if (error) {
+    return { ok: false, message: error.message }
+  }
+
+  revalidatePath("/stock")
+  revalidatePath("/reports")
+  return { ok: true }
+}
+
 export async function createStockCount(formData: FormData) {
   const itemId = String(formData.get("itemId") || "").trim()
   const countDate = String(formData.get("countDate") || "").trim()

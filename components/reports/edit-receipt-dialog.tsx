@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useTransition } from "react"
+import React, { useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Pencil } from "lucide-react"
 
@@ -49,6 +49,10 @@ export function EditReceiptDialog({
     reference: receipt.reference ?? "",
   })
   const router = useRouter()
+  const categoryOptions = useMemo(() => {
+    if (categories.includes(formData.category)) return categories
+    return [formData.category, ...categories]
+  }, [categories, formData.category])
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
@@ -79,11 +83,11 @@ export function EditReceiptDialog({
       <DialogTrigger asChild>
         <Button
           variant="outline"
-          size="sm"
-          className="h-8 border-border px-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent bg-transparent"
+          size="icon-sm"
+          title="Edit receipt"
+          className="h-8 w-8 border-border text-muted-foreground hover:text-foreground hover:bg-accent bg-transparent"
         >
-          <Pencil className="mr-2 h-4 w-4" />
-          Edit
+          <Pencil className="h-4 w-4" />
         </Button>
       </DialogTrigger>
       <DialogContent className="bg-card border-border sm:max-w-[480px]">
@@ -117,7 +121,7 @@ export function EditReceiptDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor={`edit-receipt-vendor-${receipt.id}`} className="text-foreground">
-                Vendor / Payee
+                Shoper
               </Label>
               <Input
                 id={`edit-receipt-vendor-${receipt.id}`}
@@ -143,7 +147,7 @@ export function EditReceiptDialog({
                   }
                   required
                 >
-                  {categories.map((category) => (
+                  {categoryOptions.map((category) => (
                     <option key={category} value={category}>
                       {category}
                     </option>

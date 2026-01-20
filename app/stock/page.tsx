@@ -22,7 +22,7 @@ export default async function StockPage() {
 
   const { data: categoriesData, error: categoriesError } = await supabase
     .from("inventory_categories")
-    .select("name")
+    .select("id, name")
     .order("name")
 
   if (categoriesError) throw new Error(categoriesError.message)
@@ -59,6 +59,7 @@ export default async function StockPage() {
     qtyNumeric: number | null
     qtyUnit: string | null
   }> = []
+  let countedItemIds: string[] = []
   if (globalLatest) {
     const { data: latestCounts, error: countsError } = await supabase
       .from("stock_counts")
@@ -69,6 +70,19 @@ export default async function StockPage() {
     if (countsError) throw new Error(countsError.message)
 
     countsData = latestCounts ?? []
+  }
+
+  if (itemIds.length > 0) {
+    const { data: countedItems, error: countedError } = await supabase
+      .from("stock_counts")
+      .select("item_id")
+      .in("item_id", itemIds)
+
+    if (countedError) throw new Error(countedError.message)
+
+    countedItemIds = Array.from(
+      new Set((countedItems ?? []).map((row) => row.item_id))
+    )
   }
 
   if (itemIds.length > 0) {
@@ -125,6 +139,10 @@ export default async function StockPage() {
   })
 
   const categories = (categoriesData ?? []).map((category) => category.name)
+  const categoryOptions = (categoriesData ?? []).map((category) => ({
+    id: category.id,
+    name: category.name,
+  }))
   const itemOptions = (items ?? []).map((item: any) => ({
     id: item.id,
     name: item.name,
@@ -144,10 +162,12 @@ export default async function StockPage() {
     <StockClient
       initialData={rows}
       categories={categories}
+      categoryOptions={categoryOptions}
       items={itemOptions}
       counts={counts}
       weeklyDates={weeklyDates}
       weeklyCounts={weeklyCounts}
+      countedItemIds={countedItemIds}
     />
   )
 }
