@@ -240,7 +240,3 @@ export default function HelpPage() {
     </AppShell>
   )
 }
-
-function Loading() {
-  return null
-}
