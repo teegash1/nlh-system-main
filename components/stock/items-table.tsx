@@ -1,11 +1,11 @@
 "use client"
 
-import { useTransition } from "react"
 import { Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { deleteItem } from "@/app/stock/actions"
 import { EditItemDialog } from "@/components/stock/edit-item-dialog"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 export interface StockItemRow {
   id: string
@@ -23,17 +23,10 @@ interface ItemsTableProps {
 }
 
 export function ItemsTable({ items, categories }: ItemsTableProps) {
-  const [isPending, startTransition] = useTransition()
-
-  const handleDelete = (id: string) => {
-    const confirmed = window.confirm("Archive this item? It will be hidden.")
-    if (!confirmed) return
-
+  const handleDelete = async (id: string) => {
     const payload = new FormData()
     payload.set("id", id)
-    startTransition(async () => {
-      await deleteItem(payload)
-    })
+    await deleteItem(payload)
   }
 
   if (items.length === 0) {
@@ -54,7 +47,7 @@ export function ItemsTable({ items, categories }: ItemsTableProps) {
         <span>Latest</span>
         <span>Actions</span>
       </div>
-      <div className="divide-y divide-border">
+      <div className="max-h-[70vh] divide-y divide-border overflow-y-auto md:max-h-[900px]">
         {items.map((item) => (
           <div
             key={item.id}
@@ -83,16 +76,22 @@ export function ItemsTable({ items, categories }: ItemsTableProps) {
                 }}
                 categories={categories}
               />
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={isPending}
-                onClick={() => handleDelete(item.id)}
-                className="border-border text-muted-foreground hover:text-foreground hover:bg-accent"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Archive
-              </Button>
+              <ConfirmDialog
+                title="Archive this item?"
+                description="The item will be hidden from active stock views. You can restore it later."
+                confirmLabel="Archive item"
+                onConfirm={() => handleDelete(item.id)}
+                trigger={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-border text-muted-foreground hover:text-foreground hover:bg-accent"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Archive
+                  </Button>
+                }
+              />
             </div>
           </div>
         ))}

@@ -32,8 +32,8 @@ export interface StockItem {
   id: string
   item: string
   category: string
-  volume: string
-  cost: number
+  unit: string
+  reorderLevel: number | null
   weekData: Record<string, string>
   status: "in-stock" | "low-stock" | "out-of-stock"
 }
@@ -43,12 +43,21 @@ interface StockTableProps {
   weeks: string[]
   onEdit?: (item: StockItem) => void
   onDelete?: (item: StockItem) => void
+  showSearch?: boolean
+  showActions?: boolean
 }
 
 type SortDirection = "asc" | "desc" | null
-type SortField = "item" | "category" | "volume" | "cost" | "status"
+type SortField = "item" | "category" | "unit" | "reorderLevel" | "status"
 
-export function StockTable({ data, weeks, onEdit, onDelete }: StockTableProps) {
+export function StockTable({
+  data,
+  weeks,
+  onEdit,
+  onDelete,
+  showSearch = true,
+  showActions = Boolean(onEdit || onDelete),
+}: StockTableProps) {
   const [sortField, setSortField] = useState<SortField | null>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>(null)
   const [searchTerm, setSearchTerm] = useState("")
@@ -78,11 +87,13 @@ export function StockTable({ data, weeks, onEdit, onDelete }: StockTableProps) {
     )
   }
 
-  const filteredData = data.filter(
-    (item) =>
-      item.item.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.category.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredData = showSearch
+    ? data.filter(
+        (item) =>
+          item.item.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.category.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : data
 
   const sortedData = [...filteredData].sort((a, b) => {
     if (!sortField || !sortDirection) return 0
@@ -90,9 +101,9 @@ export function StockTable({ data, weeks, onEdit, onDelete }: StockTableProps) {
     let aValue: string | number = a[sortField]
     let bValue: string | number = b[sortField]
 
-    if (sortField === "cost") {
-      aValue = a.cost
-      bValue = b.cost
+    if (sortField === "reorderLevel") {
+      aValue = a.reorderLevel ?? -Infinity
+      bValue = b.reorderLevel ?? -Infinity
     } else {
       aValue = String(aValue).toLowerCase()
       bValue = String(bValue).toLowerCase()
@@ -129,19 +140,22 @@ export function StockTable({ data, weeks, onEdit, onDelete }: StockTableProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <Input
-          placeholder="Search items..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-xs bg-secondary/50 border-border text-foreground placeholder:text-muted-foreground"
-        />
-        <span className="text-sm text-muted-foreground">
-          {sortedData.length} items
-        </span>
-      </div>
+      {showSearch && (
+        <div className="flex items-center gap-4">
+          <Input
+            placeholder="Search items..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-xs bg-secondary/50 border-border text-foreground placeholder:text-muted-foreground"
+          />
+          <span className="text-sm text-muted-foreground">
+            {sortedData.length} items
+          </span>
+        </div>
+      )}
 
       <div className="border border-border rounded-xl overflow-hidden">
+        <div className="min-w-[900px] overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="bg-secondary/30 hover:bg-secondary/30 border-border">
@@ -166,19 +180,19 @@ export function StockTable({ data, weeks, onEdit, onDelete }: StockTableProps) {
               <TableHead className="text-muted-foreground font-semibold">
                 <button
                   className="flex items-center gap-1 hover:text-foreground transition-colors"
-                  onClick={() => handleSort("volume")}
+                  onClick={() => handleSort("unit")}
                 >
-                  Volume
-                  {getSortIcon("volume")}
+                  Unit
+                  {getSortIcon("unit")}
                 </button>
               </TableHead>
               <TableHead className="text-muted-foreground font-semibold text-right">
                 <button
                   className="flex items-center gap-1 ml-auto hover:text-foreground transition-colors"
-                  onClick={() => handleSort("cost")}
+                  onClick={() => handleSort("reorderLevel")}
                 >
-                  Cost (KES)
-                  {getSortIcon("cost")}
+                  Reorder
+                  {getSortIcon("reorderLevel")}
                 </button>
               </TableHead>
               {weeks.map((week) => (
@@ -198,9 +212,11 @@ export function StockTable({ data, weeks, onEdit, onDelete }: StockTableProps) {
                   {getSortIcon("status")}
                 </button>
               </TableHead>
-              <TableHead className="text-muted-foreground font-semibold w-[50px]">
-                <span className="sr-only">Actions</span>
-              </TableHead>
+              {showActions && (
+                <TableHead className="text-muted-foreground font-semibold w-[50px]">
+                  <span className="sr-only">Actions</span>
+                </TableHead>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -219,10 +235,10 @@ export function StockTable({ data, weeks, onEdit, onDelete }: StockTableProps) {
                   {item.category}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {item.volume}
+                  {item.unit}
                 </TableCell>
                 <TableCell className="text-right font-mono text-foreground">
-                  {item.cost.toLocaleString()}
+                  {item.reorderLevel ?? "—"}
                 </TableCell>
                 {weeks.map((week) => (
                   <TableCell
@@ -233,40 +249,47 @@ export function StockTable({ data, weeks, onEdit, onDelete }: StockTableProps) {
                   </TableCell>
                 ))}
                 <TableCell>{getStatusBadge(item.status)}</TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Actions</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-card border-border">
-                      <DropdownMenuItem
-                        onClick={() => onEdit?.(item)}
-                        className="text-muted-foreground hover:text-foreground focus:text-foreground"
-                      >
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => onDelete?.(item)}
-                        className="text-chart-4 hover:text-chart-4 focus:text-chart-4"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
+                {showActions && (
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">Actions</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-card border-border">
+                        {onEdit && (
+                          <DropdownMenuItem
+                            onClick={() => onEdit(item)}
+                            className="text-muted-foreground hover:text-foreground focus:text-foreground"
+                          >
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                        )}
+                        {onDelete && (
+                          <DropdownMenuItem
+                            onClick={() => onDelete(item)}
+                            className="text-chart-4 hover:text-chart-4 focus:text-chart-4"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
         </Table>
+        </div>
       </div>
     </div>
   )

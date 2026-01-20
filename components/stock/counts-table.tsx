@@ -1,11 +1,11 @@
 "use client"
 
-import { useTransition } from "react"
 import { Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { deleteStockCount } from "@/app/stock/actions"
 import { EditCountDialog } from "@/components/stock/edit-count-dialog"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 export interface StockCountRow {
   id: string
@@ -22,17 +22,10 @@ interface CountsTableProps {
 }
 
 export function CountsTable({ counts }: CountsTableProps) {
-  const [isPending, startTransition] = useTransition()
-
-  const handleDelete = (id: string) => {
-    const confirmed = window.confirm("Delete this stock count entry?")
-    if (!confirmed) return
-
+  const handleDelete = async (id: string) => {
     const payload = new FormData()
     payload.set("id", id)
-    startTransition(async () => {
-      await deleteStockCount(payload)
-    })
+    await deleteStockCount(payload)
   }
 
   if (counts.length === 0) {
@@ -52,7 +45,7 @@ export function CountsTable({ counts }: CountsTableProps) {
         <span>Numeric</span>
         <span>Actions</span>
       </div>
-      <div className="divide-y divide-border">
+      <div className="max-h-[70vh] divide-y divide-border overflow-y-auto md:max-h-[900px]">
         {counts.map((count) => (
           <div
             key={count.id}
@@ -71,16 +64,22 @@ export function CountsTable({ counts }: CountsTableProps) {
             </div>
             <div className="flex flex-wrap gap-2">
               <EditCountDialog count={count} />
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={isPending}
-                onClick={() => handleDelete(count.id)}
-                className="border-border text-muted-foreground hover:text-foreground hover:bg-accent"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </Button>
+              <ConfirmDialog
+                title="Delete this count entry?"
+                description="This action removes the stocktake record from the latest snapshot."
+                confirmLabel="Delete entry"
+                onConfirm={() => handleDelete(count.id)}
+                trigger={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-border text-muted-foreground hover:text-foreground hover:bg-accent"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </Button>
+                }
+              />
             </div>
           </div>
         ))}

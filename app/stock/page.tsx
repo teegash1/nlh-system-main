@@ -51,6 +51,14 @@ export default async function StockPage() {
   }
 
   let countsData: any[] = []
+  let weeklyDates: string[] = []
+  let weeklyCounts: Array<{
+    itemId: string
+    countDate: string
+    rawValue: string
+    qtyNumeric: number | null
+    qtyUnit: string | null
+  }> = []
   if (globalLatest) {
     const { data: latestCounts, error: countsError } = await supabase
       .from("stock_counts")
@@ -61,6 +69,45 @@ export default async function StockPage() {
     if (countsError) throw new Error(countsError.message)
 
     countsData = latestCounts ?? []
+  }
+
+  if (itemIds.length > 0) {
+    const { data: dateRows, error: datesError } = await supabase
+      .from("stock_counts")
+      .select("count_date")
+      .order("count_date", { ascending: false })
+      .limit(120)
+
+    if (datesError) throw new Error(datesError.message)
+
+    const uniqueDates: string[] = []
+    for (const row of dateRows ?? []) {
+      const date = String(row.count_date)
+      if (!uniqueDates.includes(date)) {
+        uniqueDates.push(date)
+      }
+      if (uniqueDates.length >= 4) break
+    }
+
+    weeklyDates = uniqueDates.slice().reverse()
+
+    if (weeklyDates.length > 0) {
+      const { data: weeklyData, error: weeklyError } = await supabase
+        .from("stock_counts")
+        .select("item_id, count_date, raw_value, qty_numeric, qty_unit")
+        .in("item_id", itemIds)
+        .in("count_date", weeklyDates)
+
+      if (weeklyError) throw new Error(weeklyError.message)
+
+      weeklyCounts = (weeklyData ?? []).map((row) => ({
+        itemId: row.item_id,
+        countDate: row.count_date,
+        rawValue: row.raw_value,
+        qtyNumeric: row.qty_numeric,
+        qtyUnit: row.qty_unit,
+      }))
+    }
   }
 
   const rows: StockRow[] = (items ?? []).map((row: any) => {
@@ -99,6 +146,8 @@ export default async function StockPage() {
       categories={categories}
       items={itemOptions}
       counts={counts}
+      weeklyDates={weeklyDates}
+      weeklyCounts={weeklyCounts}
     />
   )
 }
