@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { DatePicker } from "@/components/ui/date-picker"
 import { updateReceipt } from "@/app/reports/actions"
 
 interface EditReceiptDialogProps {
@@ -57,6 +58,11 @@ export function EditReceiptDialog({
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
     setError(null)
+
+    if (!formData.receiptDate) {
+      setError("Select an expenditure date.")
+      return
+    }
 
     const payload = new FormData()
     payload.set("id", receipt.id)
@@ -108,15 +114,14 @@ export function EditReceiptDialog({
               <Label htmlFor={`edit-receipt-date-${receipt.id}`} className="text-foreground">
                 Expenditure Date
               </Label>
-              <Input
+              <DatePicker
                 id={`edit-receipt-date-${receipt.id}`}
-                type="date"
                 value={formData.receiptDate}
-                onChange={(event) =>
-                  setFormData({ ...formData, receiptDate: event.target.value })
+                onChange={(value) =>
+                  setFormData({ ...formData, receiptDate: value })
                 }
+                placeholder="Select date"
                 className="bg-secondary/40 border-border text-foreground"
-                required
               />
             </div>
             <div className="space-y-2">

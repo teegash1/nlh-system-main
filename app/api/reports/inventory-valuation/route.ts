@@ -5,15 +5,19 @@ import { createClient } from "@/lib/supabase/server"
 
 export const dynamic = "force-dynamic"
 
+const parseNumericText = (value: string | null) => {
+  const raw = String(value ?? "").trim().toLowerCase()
+  if (!raw) return null
+  if (raw === "nil" || raw === "none") return 0
+  const match = raw.match(/-?\d+(\.\d+)?/)
+  return match ? Number(match[0]) : null
+}
+
 const getNumericCount = (rawValue: string | null, qtyNumeric: number | null) => {
   if (typeof qtyNumeric === "number" && Number.isFinite(qtyNumeric)) {
     return Number(qtyNumeric)
   }
-  const raw = String(rawValue ?? "").trim().toLowerCase()
-  if (!raw) return null
-  if (raw === "nil" || raw === "none") return 0
-  if (/^-?\d+(\.\d+)?$/.test(raw)) return Number(raw)
-  return null
+  return parseNumericText(rawValue)
 }
 
 export async function GET() {
@@ -22,6 +26,73 @@ export async function GET() {
 
   if (!userData.user) {
     return NextResponse.json({ ok: false, message: "Unauthorized" }, { status: 401 })
+  }
+
+  const { data: latestMonth, error: monthError } = await supabase
+    .from("monthly_stocktake_rows")
+    .select("month_start")
+    .order("month_start", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (monthError) {
+    return NextResponse.json({ ok: false, message: monthError.message }, { status: 500 })
+  }
+
+  if (latestMonth?.month_start) {
+    const monthStart = latestMonth.month_start
+    const { data: monthlyRows, error: monthlyError } = await supabase
+      .from("monthly_stocktake_rows")
+      .select(
+        "item_id, qty_end, cost, item:inventory_items(name, unit, category:inventory_categories(name))"
+      )
+      .eq("month_start", monthStart)
+
+    if (monthlyError) {
+      return NextResponse.json({ ok: false, message: monthlyError.message }, { status: 500 })
+    }
+
+    let totalValue = 0
+    let valuedItems = 0
+
+    const rows = (monthlyRows ?? []).map((row: any) => {
+      const qty = parseNumericText(row.qty_end)
+      const unitCost = parseNumericText(row.cost)
+      const value = qty != null && unitCost != null ? qty * unitCost : null
+      if (value != null) {
+        totalValue += value
+        valuedItems += 1
+      }
+      return {
+        item: row.item?.name ?? "Unknown item",
+        category: row.item?.category?.name ?? "Uncategorized",
+        unit: row.item?.unit ?? "pcs",
+        quantity: qty,
+        unitCost,
+        value,
+      }
+    })
+
+    const meta = {
+      reportTitle: "Inventory Valuation",
+      periodLabel: `As of ${format(parseISO(monthStart), "MMM d, yyyy")}`,
+      periodStart: monthStart,
+      periodEnd: monthStart,
+      reportDate: format(new Date(), "yyyy-MM-dd"),
+    }
+
+    return NextResponse.json({
+      ok: true,
+      data: {
+        meta,
+        summary: {
+          totalItems: rows.length,
+          valuedItems,
+          totalValue,
+        },
+        rows,
+      },
+    })
   }
 
   const { data: latestRow, error: latestError } = await supabase

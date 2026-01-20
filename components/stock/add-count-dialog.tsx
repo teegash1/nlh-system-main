@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { CalendarIcon, PlusCircle } from "lucide-react"
+import { PlusCircle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { DatePicker } from "@/components/ui/date-picker"
 import { createStockCount } from "@/app/stock/actions"
 
 interface ItemOption {
@@ -50,6 +51,11 @@ export function AddCountDialog({ items }: AddCountDialogProps) {
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
     setError(null)
+
+    if (!formData.countDate) {
+      setError("Select a count date.")
+      return
+    }
 
     const payload = new FormData()
     payload.set("itemId", formData.itemId)
@@ -125,19 +131,15 @@ export function AddCountDialog({ items }: AddCountDialogProps) {
               <Label htmlFor="countDate" className="text-foreground">
                 Count Date
               </Label>
-              <div className="relative">
-                <CalendarIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="countDate"
-                  type="date"
-                  value={formData.countDate}
-                  onChange={(event) =>
-                    setFormData({ ...formData, countDate: event.target.value })
-                  }
-                  className="bg-secondary/50 border-border text-foreground pl-9"
-                  required
-                />
-              </div>
+              <DatePicker
+                id="countDate"
+                value={formData.countDate}
+                onChange={(value) =>
+                  setFormData({ ...formData, countDate: value })
+                }
+                placeholder="Select date"
+                className="bg-secondary/50 border-border text-foreground"
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="rawValue" className="text-foreground">

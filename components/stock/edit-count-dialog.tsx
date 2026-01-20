@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useTransition } from "react"
-import { CalendarIcon, Pencil } from "lucide-react"
+import { Pencil } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { DatePicker } from "@/components/ui/date-picker"
 import { updateStockCount } from "@/app/stock/actions"
 
 interface EditCountDialogProps {
@@ -44,6 +45,11 @@ export function EditCountDialog({ count }: EditCountDialogProps) {
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
     setError(null)
+
+    if (!formData.countDate) {
+      setError("Select a count date.")
+      return
+    }
 
     const payload = new FormData()
     payload.set("id", count.id)
@@ -93,19 +99,15 @@ export function EditCountDialog({ count }: EditCountDialogProps) {
               <Label htmlFor={`edit-count-date-${count.id}`} className="text-foreground">
                 Count Date
               </Label>
-              <div className="relative">
-                <CalendarIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id={`edit-count-date-${count.id}`}
-                  type="date"
-                  value={formData.countDate}
-                  onChange={(event) =>
-                    setFormData({ ...formData, countDate: event.target.value })
-                  }
-                  className="bg-secondary/50 border-border text-foreground pl-9"
-                  required
-                />
-              </div>
+              <DatePicker
+                id={`edit-count-date-${count.id}`}
+                value={formData.countDate}
+                onChange={(value) =>
+                  setFormData({ ...formData, countDate: value })
+                }
+                placeholder="Select date"
+                className="bg-secondary/50 border-border text-foreground"
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor={`edit-raw-${count.id}`} className="text-foreground">

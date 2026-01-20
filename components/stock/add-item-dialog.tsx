@@ -25,6 +25,7 @@ export function AddItemDialog({ categories }: AddItemDialogProps) {
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const hasCategories = categories.length > 0
   const [formData, setFormData] = useState({
     name: "",
     category: "",
@@ -36,6 +37,15 @@ export function AddItemDialog({ categories }: AddItemDialogProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+
+    if (!hasCategories) {
+      setError("Add a category before creating items.")
+      return
+    }
+    if (!formData.category) {
+      setError("Select a category.")
+      return
+    }
 
     const payload = new FormData()
     payload.set("name", formData.name)
@@ -96,22 +106,30 @@ export function AddItemDialog({ categories }: AddItemDialogProps) {
               <Label htmlFor="category" className="text-foreground">
                 Category
               </Label>
-              <Input
+              <select
                 id="category"
-                list="category-options"
                 value={formData.category}
                 onChange={(e) =>
                   setFormData({ ...formData, category: e.target.value })
                 }
-                className="bg-secondary/50 border-border text-foreground"
-                placeholder="Start typing or select"
+                className="h-9 w-full rounded-md border border-border bg-secondary/50 px-3 text-sm text-foreground"
                 required
-              />
-              <datalist id="category-options">
+                disabled={!hasCategories}
+              >
+                <option value="" disabled>
+                  {hasCategories ? "Select category" : "No categories yet"}
+                </option>
                 {categories.map((category) => (
-                  <option key={category} value={category} />
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
                 ))}
-              </datalist>
+              </select>
+              {!hasCategories && (
+                <p className="text-[11px] text-muted-foreground">
+                  Use Manage Categories to add one before creating items.
+                </p>
+              )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="volume" className="text-foreground">

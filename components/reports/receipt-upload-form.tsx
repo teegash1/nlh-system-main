@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { DatePicker } from "@/components/ui/date-picker"
 import { createReceipt } from "@/app/reports/actions"
 
 interface ReceiptUploadFormProps {
@@ -35,6 +36,11 @@ export function ReceiptUploadForm({
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
     setError(null)
+
+    if (!formData.receiptDate) {
+      setError("Select an expenditure date.")
+      return
+    }
 
     if (!hasCategories) {
       setError("Add at least one category before uploading a receipt.")
@@ -88,14 +94,13 @@ export function ReceiptUploadForm({
         <Label htmlFor="receipt-date" className="text-foreground">
           Expenditure Date
         </Label>
-        <Input
+        <DatePicker
           id="receipt-date"
-          type="date"
-          required
           value={formData.receiptDate}
-          onChange={(event) =>
-            setFormData({ ...formData, receiptDate: event.target.value })
+          onChange={(value) =>
+            setFormData({ ...formData, receiptDate: value })
           }
+          placeholder="Select date"
           className="bg-secondary/40 border-border text-foreground"
         />
       </div>

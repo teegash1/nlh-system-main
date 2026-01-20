@@ -28,13 +28,10 @@ export function DateFilter({ onFilterChange }: DateFilterProps) {
     to: undefined,
   })
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
-  const weekOptions = { weekStartsOn: 1 as const }
+  const weekStartSunday = { weekStartsOn: 0 as const }
+  const weekEndSunday = { weekStartsOn: 1 as const }
 
   const filters: { id: FilterType; label: string }[] = [
-    { id: "this-week", label: "This Week" },
-    { id: "this-month", label: "This Month" },
-    { id: "last-3-months", label: "Last 3 Months" },
-    { id: "ytd", label: "Year to Date" },
     { id: "custom", label: "Custom Range" },
   ]
 
@@ -48,13 +45,13 @@ export function DateFilter({ onFilterChange }: DateFilterProps) {
   const handleCustomDateSelect = (range: { from: Date | undefined; to: Date | undefined }) => {
     let { from, to } = range
     if (from) {
-      from = startOfWeek(from, weekOptions)
+      from = startOfWeek(from, weekStartSunday)
     }
     if (to) {
-      to = endOfWeek(to, weekOptions)
+      to = endOfWeek(to, weekEndSunday)
     }
     if (from && to) {
-      const maxEnd = endOfWeek(addWeeks(from, 3), weekOptions)
+      const maxEnd = endOfWeek(addWeeks(from, 3), weekEndSunday)
       if (to > maxEnd) {
         to = maxEnd
       }
@@ -101,7 +98,7 @@ export function DateFilter({ onFilterChange }: DateFilterProps) {
                 className="bg-card"
               />
               <div className="px-4 pb-4 text-[11px] text-muted-foreground">
-                Range snaps to Monday-Sunday, max 4 weeks.
+                Range snaps to Sunday-Sunday, max 4 Sundays.
               </div>
             </PopoverContent>
           </Popover>

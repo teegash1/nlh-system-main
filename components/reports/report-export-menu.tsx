@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Download, FileText, Sheet } from "lucide-react"
+import { format } from "date-fns"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -10,6 +11,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
 
 type ReportType =
   | "weekly-stock"
@@ -318,9 +325,25 @@ const toCsv = (rows: string[][]) =>
 
 export function ReportExportMenu({ reportType, reportTitle }: ReportExportMenuProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [rangeOpen, setRangeOpen] = useState(false)
+  const [range, setRange] = useState<{
+    from?: Date
+    to?: Date
+  }>({})
+
+  const rangeLabel =
+    range.from && range.to
+      ? `${format(range.from, "MMM d")} - ${format(range.to, "MMM d, yyyy")}`
+      : "Custom range"
 
   const fetchReport = async () => {
-    const res = await fetch(`/api/reports/${reportType}`, { cache: "no-store" })
+    let url = `/api/reports/${reportType}`
+    if (reportType === "monthly-expense" && range.from && range.to) {
+      const from = format(range.from, "yyyy-MM-dd")
+      const to = format(range.to, "yyyy-MM-dd")
+      url = `${url}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
+    }
+    const res = await fetch(url, { cache: "no-store" })
     if (!res.ok) {
       throw new Error("Unable to fetch report data.")
     }
@@ -647,7 +670,7 @@ export function ReportExportMenu({ reportType, reportTitle }: ReportExportMenuPr
     URL.revokeObjectURL(url)
   }
 
-  return (
+  const downloadButton = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
@@ -677,5 +700,47 @@ export function ReportExportMenu({ reportType, reportTitle }: ReportExportMenuPr
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  )
+
+  if (reportType !== "monthly-expense") {
+    return downloadButton
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Popover open={rangeOpen} onOpenChange={setRangeOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-border text-muted-foreground hover:text-foreground hover:bg-accent premium-btn bg-transparent"
+          >
+            {rangeLabel}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0 bg-card border-border" align="end">
+          <Calendar
+            initialFocus
+            mode="range"
+            selected={{ from: range.from, to: range.to }}
+            defaultMonth={range.from}
+            onSelect={(nextRange) => {
+              const from = nextRange?.from
+              const to = nextRange?.to
+              setRange({ from, to })
+              if (from && to) {
+                setRangeOpen(false)
+              }
+            }}
+            numberOfMonths={2}
+            className="bg-card"
+          />
+          <div className="px-4 pb-4 text-[11px] text-muted-foreground">
+            Select a custom date window for the monthly expense report.
+          </div>
+        </PopoverContent>
+      </Popover>
+      {downloadButton}
+    </div>
   )
 }

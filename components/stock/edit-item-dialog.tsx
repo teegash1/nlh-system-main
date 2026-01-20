@@ -45,8 +45,9 @@ export function EditItemDialog({ item, categories }: EditItemDialogProps) {
     const existing = categories.includes(item.category)
       ? categories
       : [item.category, ...categories]
-    return Array.from(new Set(existing))
+    return Array.from(new Set(existing)).filter(Boolean)
   }, [categories, item.category])
+  const hasCategories = sortedCategories.length > 0
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
@@ -114,21 +115,30 @@ export function EditItemDialog({ item, categories }: EditItemDialogProps) {
               <Label htmlFor={`edit-item-category-${item.id}`} className="text-foreground">
                 Category
               </Label>
-              <Input
+              <select
                 id={`edit-item-category-${item.id}`}
-                list={`edit-category-options-${item.id}`}
                 value={formData.category}
                 onChange={(event) =>
                   setFormData({ ...formData, category: event.target.value })
                 }
-                className="bg-secondary/50 border-border text-foreground"
+                className="h-9 w-full rounded-md border border-border bg-secondary/50 px-3 text-sm text-foreground"
                 required
-              />
-              <datalist id={`edit-category-options-${item.id}`}>
+                disabled={!hasCategories}
+              >
+                <option value="" disabled>
+                  {hasCategories ? "Select category" : "No categories yet"}
+                </option>
                 {sortedCategories.map((category) => (
-                  <option key={category} value={category} />
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
                 ))}
-              </datalist>
+              </select>
+              {!hasCategories && (
+                <p className="text-[11px] text-muted-foreground">
+                  Use Manage Categories to add one before editing items.
+                </p>
+              )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor={`edit-item-unit-${item.id}`} className="text-foreground">

@@ -9,6 +9,7 @@ import { ReceiptsExportButton } from "@/components/reports/receipts-export-butto
 import { CategoryManagerDialog } from "@/components/stock/category-manager-dialog"
 import { ReportExportMenu } from "@/components/reports/report-export-menu"
 import { createClient } from "@/lib/supabase/server"
+import Link from "next/link"
 import { FileText, Download, Calendar, TrendingUp, Package, DollarSign, Upload } from "lucide-react"
 
 const reports = [
@@ -250,17 +251,19 @@ export default async function ReportsPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-card border-border hover:border-accent transition-colors cursor-pointer">
-            <CardContent className="p-4 flex items-center gap-4">
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-chart-5/20">
-                <TrendingUp className="h-6 w-6 text-chart-5" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">Analytics</p>
-                <p className="text-xs text-muted-foreground">View insights</p>
-              </div>
-            </CardContent>
-          </Card>
+          <Link href="/analytics" className="block">
+            <Card className="bg-card border-border hover:border-accent transition-colors cursor-pointer">
+              <CardContent className="p-4 flex items-center gap-4">
+                <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-chart-5/20">
+                  <TrendingUp className="h-6 w-6 text-chart-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">Analytics</p>
+                  <p className="text-xs text-muted-foreground">View insights</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         {/* Recent Reports */}
@@ -405,7 +408,7 @@ export default async function ReportsPage() {
                               >
                                 {receipt.status}
                               </Badge>
-                              {canUpdateStatus && (
+                              {canUpdateStatus && receipt.status !== "Verified" && (
                                 <div className="w-[110px]">
                                   <ReceiptStatusSelect
                                     receiptId={receipt.id}
