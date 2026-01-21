@@ -56,7 +56,37 @@ interface LowStockAlertProps {
 }
 
 export function LowStockAlert({ items, viewLink = "/stock" }: LowStockAlertProps) {
-  const displayItems = items ?? lowStockItems
+  const sourceItems = items ?? lowStockItems
+  const outOfStock = sourceItems.filter((item) => item.current <= 0)
+  const lowStock = sourceItems.filter((item) => item.current > 0)
+
+  const lowStockSorted = [...lowStock].sort((a, b) => {
+    const ratioA = a.threshold > 0 ? a.current / a.threshold : Number.POSITIVE_INFINITY
+    const ratioB = b.threshold > 0 ? b.current / b.threshold : Number.POSITIVE_INFINITY
+    if (ratioA !== ratioB) return ratioA - ratioB
+    return a.current - b.current
+  })
+
+  let displayItems: LowStockItem[] = []
+  const outOfStockTop = outOfStock.slice(0, 4)
+
+  if (outOfStockTop.length === 0) {
+    displayItems = lowStockSorted.slice(0, 4)
+  } else if (outOfStockTop.length <= 2) {
+    const addCount = Math.min(2, lowStockSorted.length)
+    displayItems = [
+      ...outOfStockTop,
+      ...lowStockSorted.slice(0, addCount),
+    ]
+  } else {
+    displayItems = outOfStockTop
+    if (displayItems.length < 4) {
+      displayItems = [
+        ...displayItems,
+        ...lowStockSorted.slice(0, 4 - displayItems.length),
+      ]
+    }
+  }
 
   return (
     <Card className="bg-card border-border border-l-4 border-l-chart-3">
@@ -81,7 +111,10 @@ export function LowStockAlert({ items, viewLink = "/stock" }: LowStockAlertProps
             </div>
           ) : (
             displayItems.map((item) => {
-            const percentage = Math.round((item.current / item.threshold) * 100)
+            const percentage =
+              item.threshold > 0
+                ? Math.round((item.current / item.threshold) * 100)
+                : 0
             const isUrgent = percentage < 30
             return (
               <div

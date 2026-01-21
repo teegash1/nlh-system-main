@@ -6,6 +6,7 @@ import { TaskSummary } from "@/components/dashboard/task-summary"
 import { ActivityFeed } from "@/components/dashboard/activity-feed"
 import { LowStockAlert } from "@/components/dashboard/low-stock-alert"
 import { CalendarWidget } from "@/components/dashboard/calendar-widget"
+import { ShoppingList } from "@/components/dashboard/shopping-list"
 import { Package, TrendingUp, DollarSign, AlertTriangle } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -46,6 +47,13 @@ type ReminderRow = {
   start_at: string
   recurrence: string | null
   color: string | null
+}
+
+type ShoppingListOverride = {
+  item_id: string
+  desired_qty: number | null
+  unit_price: number | null
+  notes?: string | null
 }
 
 const colorClassMap: Record<string, string> = {
@@ -118,6 +126,7 @@ export default async function DashboardPage() {
     status: string
   }> = []
   let reminders: ReminderRow[] = []
+  let shoppingOverrides: ShoppingListOverride[] = []
 
   if (userId) {
     const { data: receiptsData, error: receiptsError } = await supabase
@@ -249,6 +258,19 @@ export default async function DashboardPage() {
     category: string
   }>
   const outOfStockCount = lowStockItems.filter((item) => item.current <= 0).length
+
+  if (lowStockItems.length > 0) {
+    const { data: shoppingRows, error: shoppingError } = await supabase
+      .from("shopping_list_items")
+      .select("item_id, desired_qty, unit_price, notes")
+      .in(
+        "item_id",
+        lowStockItems.map((item) => item.id)
+      )
+
+    if (shoppingError) throw new Error(shoppingError.message)
+    shoppingOverrides = (shoppingRows ?? []) as ShoppingListOverride[]
+  }
 
   const { count: pendingReceiptsCount } = userId
     ? await supabase
@@ -497,6 +519,7 @@ export default async function DashboardPage() {
                 completionRate={completionRate}
               />
             </div>
+            <ShoppingList items={lowStockItems} overrides={shoppingOverrides} />
           </div>
 
           {/* Right Column - Sidebar Content */}

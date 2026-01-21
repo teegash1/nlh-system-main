@@ -346,6 +346,64 @@ to authenticated
 using (auth.uid() = user_id);
 
 
+-- Shopping list (low stock purchasing)
+create table public.shopping_list_items (
+  id uuid not null default gen_random_uuid (),
+  item_id uuid not null,
+  desired_qty numeric not null default 0,
+  unit_price numeric null,
+  notes text null,
+  created_at timestamp with time zone not null default now(),
+  updated_at timestamp with time zone not null default now(),
+  constraint shopping_list_items_pkey primary key (id),
+  constraint shopping_list_items_item_unique unique (item_id),
+  constraint shopping_list_items_item_fkey foreign key (item_id)
+    references public.inventory_items (id) on delete cascade
+) TABLESPACE pg_default;
+
+create index if not exists idx_shopping_list_items_item on public.shopping_list_items using btree (item_id) TABLESPACE pg_default;
+
+alter table public.shopping_list_items enable row level security;
+
+create policy "Shopping list readable by authenticated"
+on public.shopping_list_items
+for select
+to authenticated
+using (true);
+
+create policy "Shopping list insertable by authenticated"
+on public.shopping_list_items
+for insert
+to authenticated
+with check (true);
+
+create policy "Shopping list updateable by authenticated"
+on public.shopping_list_items
+for update
+to authenticated
+using (true)
+with check (true);
+
+create policy "Shopping list deleteable by authenticated"
+on public.shopping_list_items
+for delete
+to authenticated
+using (true);
+
+create or replace function public.set_updated_at_shopping_list_items()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_shopping_list_items_updated_at on public.shopping_list_items;
+create trigger trg_shopping_list_items_updated_at
+before update on public.shopping_list_items
+for each row execute function public.set_updated_at_shopping_list_items();
+
+
 -- Notification read state
 create table public.notification_reads (
   id uuid not null default gen_random_uuid (),
