@@ -3,14 +3,9 @@
 import { useMemo, useState } from "react"
 import {
   addDays,
-  addMonths,
   addWeeks,
-  differenceInCalendarMonths,
-  differenceInCalendarWeeks,
   endOfWeek,
   format,
-  isAfter,
-  isBefore,
   isSameDay,
   isSameWeek,
   isWithinInterval,
@@ -32,14 +27,6 @@ interface CalendarEvent {
   colorClass: string
 }
 
-interface CalendarReminder {
-  id: string
-  title: string
-  start_at: string
-  recurrence: string | null
-  color: string | null
-}
-
 interface UpcomingTask {
   id: string
   title: string
@@ -54,7 +41,6 @@ interface CalendarWidgetProps {
   events?: CalendarEvent[]
   upcomingTasks?: UpcomingTask[]
   initialWeekStart?: Date
-  reminders?: CalendarReminder[]
 }
 
 export function CalendarWidget({
@@ -62,138 +48,14 @@ export function CalendarWidget({
   events = [],
   upcomingTasks: taskItems = [],
   initialWeekStart,
-  reminders = [],
 }: CalendarWidgetProps) {
   const [weekStart, setWeekStart] = useState<Date>(
     initialWeekStart ?? startOfWeek(new Date(), { weekStartsOn: 1 })
   )
 
-  const buildOccurrences = (
-    startAt: Date,
-    recurrence: string,
-    rangeStart: Date,
-    rangeEnd: Date
-  ) => {
-    if (recurrence === "none") {
-      return isWithinInterval(startAt, { start: rangeStart, end: rangeEnd })
-        ? [startAt]
-        : []
-    }
-
-    const occurrences: Date[] = []
-    if (recurrence === "weekly" || recurrence === "biweekly") {
-      const interval = recurrence === "weekly" ? 1 : 2
-      let occurrence = startAt
-      if (isBefore(occurrence, rangeStart)) {
-        const diffWeeks = differenceInCalendarWeeks(rangeStart, occurrence, {
-          weekStartsOn: 1,
-        })
-        const steps = Math.floor(diffWeeks / interval) * interval
-        occurrence = addWeeks(occurrence, steps)
-        while (isBefore(occurrence, rangeStart)) {
-          occurrence = addWeeks(occurrence, interval)
-        }
-      }
-      while (!isAfter(occurrence, rangeEnd)) {
-        occurrences.push(occurrence)
-        occurrence = addWeeks(occurrence, interval)
-      }
-      return occurrences
-    }
-
-    if (recurrence === "monthly" || recurrence === "quarterly") {
-      const interval = recurrence === "monthly" ? 1 : 3
-      let occurrence = startAt
-      if (isBefore(occurrence, rangeStart)) {
-        const diffMonths = differenceInCalendarMonths(rangeStart, occurrence)
-        const steps = Math.floor(diffMonths / interval) * interval
-        occurrence = addMonths(occurrence, steps)
-        while (isBefore(occurrence, rangeStart)) {
-          occurrence = addMonths(occurrence, interval)
-        }
-      }
-      while (!isAfter(occurrence, rangeEnd)) {
-        occurrences.push(occurrence)
-        occurrence = addMonths(occurrence, interval)
-      }
-      return occurrences
-    }
-
-    return []
-  }
-
-  const mergedEvents = useMemo(
-    () => {
-      const rangeStart = startOfWeek(weekStart, { weekStartsOn: 1 })
-      const rangeEnd = endOfWeek(weekStart, { weekStartsOn: 1 })
-      const colorMap: Record<string, string> = {
-        "chart-1": "bg-chart-1",
-        "chart-2": "bg-chart-2",
-        "chart-3": "bg-chart-3",
-        "chart-4": "bg-chart-4",
-        "chart-5": "bg-chart-5",
-      }
-
-      const reminderEvents = reminders.flatMap((reminder) => {
-        const startAt = new Date(reminder.start_at)
-        if (Number.isNaN(startAt.getTime())) return []
-        const recurrence = String(reminder.recurrence ?? "none")
-        return buildOccurrences(startAt, recurrence, rangeStart, rangeEnd).map(
-          (date) => ({
-            date: date.toISOString(),
-            colorClass:
-              colorMap[String(reminder.color ?? "chart-1")] ?? "bg-chart-1",
-          })
-        )
-      })
-
-      return [...events, ...reminderEvents]
-    },
-    [events, reminders, weekStart]
-  )
-  const mergedTasks = useMemo(() => {
-    const rangeStart = startOfWeek(weekStart, { weekStartsOn: 1 })
-    const rangeEnd = endOfWeek(weekStart, { weekStartsOn: 1 })
-    const colorMap: Record<string, string> = {
-      "chart-1": "bg-chart-1",
-      "chart-2": "bg-chart-2",
-      "chart-3": "bg-chart-3",
-      "chart-4": "bg-chart-4",
-      "chart-5": "bg-chart-5",
-    }
-    const recurrenceLabels: Record<string, string> = {
-      none: "Reminder",
-      weekly: "Weekly reminder",
-      biweekly: "Bi-weekly reminder",
-      monthly: "Monthly reminder",
-      quarterly: "Quarterly reminder",
-    }
-    const merged = new Map<string, UpcomingTask>()
-    taskItems.forEach((item) => merged.set(item.id, item))
-    reminders
-      .flatMap((reminder) => {
-        const startAt = new Date(reminder.start_at)
-        if (Number.isNaN(startAt.getTime())) return []
-        const recurrence = String(reminder.recurrence ?? "none")
-        return buildOccurrences(startAt, recurrence, rangeStart, rangeEnd).map(
-          (date) => ({
-            id: `reminder-${reminder.id}-${date.toISOString()}`,
-            title: reminder.title,
-            type: recurrenceLabels[recurrence] ?? "Reminder",
-            time: format(date, "EEE • h:mm a"),
-            color:
-              colorMap[String(reminder.color ?? "chart-1")] ?? "bg-chart-1",
-            date: date.toISOString(),
-          })
-        )
-      })
-      .forEach((item) => merged.set(item.id, item))
-    return Array.from(merged.values())
-  }, [taskItems, reminders, weekStart])
-
   const eventsByDate = useMemo(() => {
     const map = new Map<string, string[]>()
-    mergedEvents.forEach((event) => {
+    events.forEach((event) => {
       const parsed = parseISO(event.date)
       if (!isValid(parsed)) return
       const key = format(parsed, "yyyy-MM-dd")
@@ -204,7 +66,7 @@ export function CalendarWidget({
       map.set(key, existing)
     })
     return map
-  }, [mergedEvents])
+  }, [events])
 
   const weekDays = useMemo(() => {
     const start = startOfWeek(weekStart, { weekStartsOn: 1 })
@@ -223,17 +85,17 @@ export function CalendarWidget({
     const start = startOfWeek(weekStart, { weekStartsOn: 1 })
     const end = endOfWeek(weekStart, { weekStartsOn: 1 })
 
-    return mergedTasks
+    return taskItems
       .map((task) => ({
         ...task,
-        parsedDate: new Date(task.date),
+        parsedDate: parseISO(task.date),
       }))
       .filter((task) => {
-        if (Number.isNaN(task.parsedDate.getTime())) return false
+        if (!isValid(task.parsedDate)) return false
         return isWithinInterval(task.parsedDate, { start, end })
       })
       .sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime())
-  }, [mergedTasks, weekStart])
+  }, [taskItems, weekStart])
 
   const headerLabel = isSameWeek(weekStart, new Date(), { weekStartsOn: 1 })
     ? todayLabel
