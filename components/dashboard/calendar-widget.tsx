@@ -1,11 +1,12 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/client"
 
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
@@ -157,6 +158,37 @@ export function CalendarWidget({
   const [weekStart, setWeekStart] = useState<Date>(
     startOfWeekUtc(initialWeekStart ?? new Date(), 1)
   )
+  const [liveReminders, setLiveReminders] = useState<CalendarReminder[]>(reminders)
+
+  useEffect(() => {
+    setLiveReminders(reminders)
+  }, [reminders])
+
+  useEffect(() => {
+    let isActive = true
+    if (reminders.length > 0) return undefined
+
+    const loadReminders = async () => {
+      const supabase = createClient()
+      const { data: userData } = await supabase.auth.getUser()
+      if (!userData.user) return
+
+      const { data } = await supabase
+        .from("reminders")
+        .select("id, title, start_at, recurrence, color")
+        .eq("user_id", userData.user.id)
+        .order("start_at", { ascending: true })
+
+      if (!isActive || !data) return
+      setLiveReminders(data as CalendarReminder[])
+    }
+
+    loadReminders()
+
+    return () => {
+      isActive = false
+    }
+  }, [reminders.length])
 
   const buildOccurrences = (
     startAt: Date,
@@ -215,7 +247,7 @@ export function CalendarWidget({
   }
 
   const reminderData = useMemo(() => {
-    if (!reminders.length) {
+    if (!liveReminders.length) {
       return { reminderEvents: [], reminderTasks: [] as UpcomingTask[] }
     }
 
@@ -236,7 +268,7 @@ export function CalendarWidget({
       quarterly: "Quarterly reminder",
     }
 
-    const occurrences = reminders.flatMap((reminder) => {
+    const occurrences = liveReminders.flatMap((reminder) => {
       const startAt = parseTimestampUtc(reminder.start_at)
       if (Number.isNaN(startAt.getTime())) return []
       const recurrence = String(reminder.recurrence ?? "none")
@@ -269,7 +301,7 @@ export function CalendarWidget({
         }
       }),
     }
-  }, [reminders, weekStart])
+  }, [liveReminders, weekStart])
 
   const mergedEvents = useMemo(
     () => [...events, ...reminderData.reminderEvents],
