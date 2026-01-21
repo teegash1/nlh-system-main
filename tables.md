@@ -377,3 +377,111 @@ on public.notification_reads
 for delete
 to authenticated
 using (auth.uid() = user_id);
+
+
+-- Profile enhancements
+alter table public.profiles
+add column if not exists avatar_url text,
+add column if not exists church_name text;
+
+
+-- User settings (preferences)
+create table public.user_settings (
+  user_id uuid not null primary key,
+  low_stock_alerts boolean not null default true,
+  weekly_reports boolean not null default true,
+  system_updates boolean not null default false,
+  theme text not null default 'system'::text,
+  last_backup_at timestamp with time zone null,
+  created_at timestamp with time zone not null default now(),
+  updated_at timestamp with time zone not null default now(),
+  constraint user_settings_user_id_fkey foreign KEY (user_id) references auth.users (id) on delete cascade
+) TABLESPACE pg_default;
+
+create index IF not exists idx_user_settings_user on public.user_settings using btree (user_id) TABLESPACE pg_default;
+
+alter table public.user_settings enable row level security;
+
+create policy "User settings are readable by owner"
+on public.user_settings
+for select
+to authenticated
+using (auth.uid() = user_id);
+
+create policy "User settings are insertable by owner"
+on public.user_settings
+for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+create policy "User settings are updateable by owner"
+on public.user_settings
+for update
+to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+create policy "User settings are deleteable by owner"
+on public.user_settings
+for delete
+to authenticated
+using (auth.uid() = user_id);
+
+create or replace function public.set_updated_at_user_settings()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_user_settings_updated_at on public.user_settings;
+create trigger trg_user_settings_updated_at
+before update on public.user_settings
+for each row execute function public.set_updated_at_user_settings();
+
+
+-- Storage policies (bucket: avatars)
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
+create policy "Avatar files read by owner"
+on storage.objects
+for select
+to authenticated
+using (
+  bucket_id = 'avatars'
+  and auth.uid()::text = split_part(name, '/', 1)
+);
+
+create policy "Avatar files uploaded by owner"
+on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'avatars'
+  and auth.uid()::text = split_part(name, '/', 1)
+);
+
+create policy "Avatar files update by owner"
+on storage.objects
+for update
+to authenticated
+using (
+  bucket_id = 'avatars'
+  and auth.uid()::text = split_part(name, '/', 1)
+)
+with check (
+  bucket_id = 'avatars'
+  and auth.uid()::text = split_part(name, '/', 1)
+);
+
+create policy "Avatar files delete by owner"
+on storage.objects
+for delete
+to authenticated
+using (
+  bucket_id = 'avatars'
+  and auth.uid()::text = split_part(name, '/', 1)
+);

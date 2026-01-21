@@ -100,6 +100,7 @@ export function Header({ title, subtitle }: HeaderProps) {
   const [userName, setUserName] = useState<string>("User")
   const [userRole, setUserRole] = useState<string>("Viewer")
   const [userEmail, setUserEmail] = useState<string>("")
+  const [avatarUrl, setAvatarUrl] = useState<string>("")
   const pathname = usePathname()
   const router = useRouter()
   const { notifications, unreadCount, isLoading: notificationsLoading } = useNotifications()
@@ -113,7 +114,7 @@ export function Header({ title, subtitle }: HeaderProps) {
       if (user.email) setUserEmail(user.email)
       const { data: profile } = await supabase
         .from("profiles")
-        .select("full_name, role")
+        .select("full_name, role, avatar_url")
         .eq("id", user.id)
         .maybeSingle()
       if (profile?.full_name) {
@@ -123,6 +124,9 @@ export function Header({ title, subtitle }: HeaderProps) {
       }
       if (profile?.role) {
         setUserRole(profile.role)
+      }
+      if (profile?.avatar_url) {
+        setAvatarUrl(profile.avatar_url)
       }
     }
     loadProfile()
@@ -160,6 +164,13 @@ export function Header({ title, subtitle }: HeaderProps) {
       event.preventDefault()
       handleSearchSelect(searchResults[0].href)
     }
+  }
+
+  const handleSignOut = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push("/login")
+    router.refresh()
   }
 
   return (
@@ -291,10 +302,20 @@ export function Header({ title, subtitle }: HeaderProps) {
                     </div>
                   </DropdownMenuItem>
                 ) : (
-                  notifications.slice(0, 4).map((notification) => (
+                  notifications.slice(0, 4).map((notification) => {
+                    const alertAccent =
+                      notification.severity === "out"
+                        ? "border-l-chart-4"
+                        : notification.severity === "low"
+                          ? "border-l-chart-3"
+                          : "border-l-transparent"
+                    return (
                     <DropdownMenuItem
                       key={notification.id}
-                      className="text-muted-foreground hover:text-foreground focus:text-foreground"
+                      className={cn(
+                        "text-muted-foreground hover:text-foreground focus:text-foreground border-l-2 pl-3",
+                        alertAccent
+                      )}
                       onSelect={(event) => {
                         if (!notification.href) return
                         event.preventDefault()
@@ -309,7 +330,8 @@ export function Header({ title, subtitle }: HeaderProps) {
                         </span>
                       </div>
                     </DropdownMenuItem>
-                  ))
+                  )
+                  })
                 )}
                 <DropdownMenuSeparator className="bg-border" />
                 <DropdownMenuItem
@@ -332,8 +354,17 @@ export function Header({ title, subtitle }: HeaderProps) {
                   className="rounded-full px-2"
                 >
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-[#3a3a40] to-[#2a2a30] border border-[#4a4a50]">
-                      <span className="text-xs font-semibold text-foreground">{initials}</span>
+                    <div className="flex items-center justify-center w-8 h-8 overflow-hidden rounded-full bg-gradient-to-br from-[#3a3a40] to-[#2a2a30] border border-[#4a4a50]">
+                      {avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={avatarUrl}
+                          alt="Profile avatar"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-xs font-semibold text-foreground">{initials}</span>
+                      )}
                     </div>
                     <div className="hidden max-w-[90px] flex-col text-left leading-tight sm:flex sm:max-w-[160px]">
                       <span className="text-[11px] font-semibold text-foreground sm:text-sm truncate">
@@ -372,7 +403,13 @@ export function Header({ title, subtitle }: HeaderProps) {
                   Help & Support
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-border" />
-                <DropdownMenuItem className="text-destructive-foreground focus:text-destructive-foreground">
+                <DropdownMenuItem
+                  className="text-destructive-foreground focus:text-destructive-foreground"
+                  onSelect={(event) => {
+                    event.preventDefault()
+                    handleSignOut()
+                  }}
+                >
                   Sign Out
                 </DropdownMenuItem>
               </DropdownMenuContent>

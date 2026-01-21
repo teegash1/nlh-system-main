@@ -16,6 +16,7 @@ import {
   differenceInCalendarMonths,
   differenceInCalendarWeeks,
   endOfMonth,
+  endOfDay,
   endOfWeek,
   format,
   formatDistanceToNow,

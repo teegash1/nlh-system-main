@@ -23,6 +23,7 @@ export type NotificationItem = {
   time: string
   href?: string
   read: boolean
+  severity?: "low" | "out"
 }
 
 const recurrenceLabels: Record<string, string> = {
@@ -98,10 +99,18 @@ export function useNotifications() {
       setUserId(user.id)
 
       const now = new Date()
+      const { data: settings } = await supabase
+        .from("user_settings")
+        .select("low_stock_alerts, weekly_reports, system_updates")
+        .eq("user_id", user.id)
+        .maybeSingle()
+
+      const allowLowStock = settings?.low_stock_alerts ?? true
+      const allowWeekly = settings?.weekly_reports ?? true
       const items: NotificationItem[] = []
 
       const isMonday = now.getDay() === 1
-      if (isMonday) {
+      if (isMonday && allowWeekly) {
         items.push({
           id: "weekly-report",
           type: "report",
@@ -120,7 +129,7 @@ export function useNotifications() {
         .limit(1)
 
       const latestDate = latestCountDate?.[0]?.count_date ?? null
-      if (latestDate) {
+      if (latestDate && allowLowStock) {
         const { data: countRows } = await supabase
           .from("stock_counts")
           .select(
@@ -148,6 +157,7 @@ export function useNotifications() {
             time: "Active",
             href: "/stock",
             read: false,
+            severity: isOut ? "out" : "low",
           })
         })
       }

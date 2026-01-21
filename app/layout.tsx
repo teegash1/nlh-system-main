@@ -4,6 +4,7 @@ import { Inter, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { ScrollToTop } from "@/components/layout/scroll-to-top"
+import { ThemeProvider } from "@/components/theme-provider"
 
 const _inter = Inter({ 
   subsets: ["latin"],
@@ -42,11 +43,13 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <body className="font-sans antialiased min-h-screen">
-        <ScrollToTop />
-        {children}
-        <Analytics />
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+          <ScrollToTop />
+          {children}
+          <Analytics />
+        </ThemeProvider>
       </body>
     </html>
   )

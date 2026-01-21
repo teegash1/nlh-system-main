@@ -151,11 +151,18 @@ export default function NotificationsPage() {
               <div className="space-y-3">
                 {filteredNotifications.map((notification) => {
                   const Icon = iconMap[notification.type]
+                  const alertAccent =
+                    notification.severity === "out"
+                      ? "border-l-chart-4"
+                      : notification.severity === "low"
+                        ? "border-l-chart-3"
+                        : "border-l-transparent"
                   return (
                     <div
                       key={notification.id}
                       className={cn(
-                        "flex flex-col gap-3 p-4 rounded-xl border border-border transition-colors sm:flex-row sm:items-start sm:gap-4",
+                        "flex flex-col gap-3 p-4 rounded-xl border border-border transition-colors sm:flex-row sm:items-start sm:gap-4 border-l-4",
+                        alertAccent,
                         notification.read ? "bg-secondary/20" : "bg-secondary/40"
                       )}
                     >
