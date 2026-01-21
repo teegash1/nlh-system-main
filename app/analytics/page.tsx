@@ -337,7 +337,7 @@ export default async function AnalyticsPage() {
             rangeLabel={spendRangeLabel}
             totalLabel={`KES ${Math.round(spendTotal).toLocaleString()}`}
           />
-          <CategoryChart data={categoryChartData} />
+          <CategoryChart data={categoryChartData} totalCount={totalItems} />
         </div>
 
         {/* Additional Analytics */}

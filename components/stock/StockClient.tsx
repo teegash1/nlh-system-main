@@ -10,6 +10,7 @@ import { CategoryFilter } from "@/components/stock/category-filter"
 import { AddItemDialog } from "@/components/stock/add-item-dialog"
 import { AddCountDialog } from "@/components/stock/add-count-dialog"
 import { CategoryManagerDialog } from "@/components/stock/category-manager-dialog"
+import { ReminderScheduler } from "@/components/stock/reminder-scheduler"
 import { DateFilter } from "@/components/stock/date-filter"
 import { CountsTable, type StockCountRow } from "@/components/stock/counts-table"
 import { ItemsTable, type StockItemRow } from "@/components/stock/items-table"
@@ -317,6 +318,7 @@ export default function StockClient({
               <AddItemDialog categories={categories} />
               <AddCountDialog items={items} />
               <CategoryManagerDialog categories={categoryOptions} />
+              <ReminderScheduler />
             </div>
           </div>
 

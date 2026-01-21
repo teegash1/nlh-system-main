@@ -35,11 +35,13 @@ const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
 
 export function CategoryChart({
   data,
+  totalCount,
 }: {
   data?: CategoryChartDatum[]
+  totalCount?: number
 }) {
   const chartData = data ?? fallbackData
-  const total = chartData.reduce((sum, item) => sum + item.value, 0)
+  const total = totalCount ?? chartData.reduce((sum, item) => sum + item.value, 0)
 
   return (
     <Card className="bg-card border-border">

@@ -78,7 +78,7 @@ export function TaskSummary({
     <Card className="bg-card border-border">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-semibold text-foreground sm:text-base">
-          Task Summary
+          Stock Tasks
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0">

@@ -142,6 +142,9 @@ export async function createStockCount(formData: FormData) {
   if (userError) {
     return { ok: false, message: userError.message }
   }
+  if (!userData.user?.id) {
+    return { ok: false, message: "You must be signed in to schedule reminders." }
+  }
 
   const { error } = await supabase.from("stock_counts").insert({
     item_id: itemId,
@@ -293,5 +296,70 @@ export async function deleteItem(formData: FormData) {
   }
 
   revalidatePath("/stock")
+  return { ok: true }
+}
+
+export async function createReminder(formData: FormData) {
+  const title = String(formData.get("title") || "").trim()
+  const notes = String(formData.get("notes") || "").trim()
+  const date = String(formData.get("date") || "").trim()
+  const time = String(formData.get("time") || "").trim() || "09:00"
+  const recurrence = String(formData.get("recurrence") || "none").trim()
+  const color = String(formData.get("color") || "chart-1").trim()
+
+  if (!title) {
+    return { ok: false, message: "Reminder title is required." }
+  }
+  if (!date) {
+    return { ok: false, message: "Reminder date is required." }
+  }
+
+  const startAt = new Date(`${date}T${time}`)
+  if (Number.isNaN(startAt.getTime())) {
+    return { ok: false, message: "Invalid date or time." }
+  }
+
+  const allowedRecurrence = new Set([
+    "none",
+    "weekly",
+    "biweekly",
+    "monthly",
+    "quarterly",
+  ])
+  const safeRecurrence = allowedRecurrence.has(recurrence)
+    ? recurrence
+    : "none"
+
+  const allowedColors = new Set([
+    "chart-1",
+    "chart-2",
+    "chart-3",
+    "chart-4",
+    "chart-5",
+  ])
+  const safeColor = allowedColors.has(color) ? color : "chart-1"
+
+  const supabase = await createClient()
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+
+  if (userError) {
+    return { ok: false, message: userError.message }
+  }
+
+  const { error } = await supabase.from("reminders").insert({
+    title,
+    notes: notes || null,
+    start_at: startAt.toISOString(),
+    recurrence: safeRecurrence,
+    color: safeColor,
+    user_id: userData.user.id,
+  })
+
+  if (error) {
+    return { ok: false, message: error.message }
+  }
+
+  revalidatePath("/stock")
+  revalidatePath("/dashboard")
   return { ok: true }
 }

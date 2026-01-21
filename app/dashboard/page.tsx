@@ -10,14 +10,24 @@ import { Package, TrendingUp, DollarSign, AlertTriangle } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import {
   addDays,
+  addMonths,
+  addWeeks,
+  differenceInCalendarDays,
+  differenceInCalendarMonths,
+  differenceInCalendarWeeks,
   endOfMonth,
+  endOfWeek,
   format,
   formatDistanceToNow,
-  isSameDay,
+  isAfter,
+  isBefore,
+  isWithinInterval,
   parseISO,
+  startOfDay,
   startOfMonth,
   startOfWeek,
   subMonths,
+  subWeeks,
 } from "date-fns"
 
 const parseNumber = (value: unknown) => {
@@ -34,6 +44,88 @@ const parseCountValue = (value: unknown, rawValue?: string | null) => {
   if (raw === "nil" || raw === "none") return 0
   if (/^-?\d+(\.\d+)?$/.test(raw)) return Number(raw)
   return null
+}
+
+type ReminderRow = {
+  id: string
+  title: string
+  notes: string | null
+  start_at: string
+  recurrence: string | null
+  color: string | null
+}
+
+const colorClassMap: Record<string, string> = {
+  "chart-1": "bg-chart-1",
+  "chart-2": "bg-chart-2",
+  "chart-3": "bg-chart-3",
+  "chart-4": "bg-chart-4",
+  "chart-5": "bg-chart-5",
+}
+
+const recurrenceLabels: Record<string, string> = {
+  none: "Reminder",
+  weekly: "Weekly reminder",
+  biweekly: "Bi-weekly reminder",
+  monthly: "Monthly reminder",
+  quarterly: "Quarterly reminder",
+}
+
+const buildOccurrences = (
+  reminder: ReminderRow,
+  rangeStart: Date,
+  rangeEnd: Date
+) => {
+  const startAt = new Date(reminder.start_at)
+  if (Number.isNaN(startAt.getTime())) return []
+
+  const recurrence = reminder.recurrence ?? "none"
+  if (recurrence === "none") {
+    return isWithinInterval(startAt, { start: rangeStart, end: rangeEnd })
+      ? [startAt]
+      : []
+  }
+
+  const occurrences: Date[] = []
+  if (recurrence === "weekly" || recurrence === "biweekly") {
+    const interval = recurrence === "weekly" ? 1 : 2
+    let occurrence = startAt
+    if (isBefore(occurrence, rangeStart)) {
+      const diffWeeks = differenceInCalendarWeeks(rangeStart, occurrence, {
+        weekStartsOn: 1,
+      })
+      const steps = Math.floor(diffWeeks / interval) * interval
+      occurrence = addWeeks(occurrence, steps)
+      while (isBefore(occurrence, rangeStart)) {
+        occurrence = addWeeks(occurrence, interval)
+      }
+    }
+    while (!isAfter(occurrence, rangeEnd)) {
+      occurrences.push(occurrence)
+      occurrence = addWeeks(occurrence, interval)
+    }
+    return occurrences
+  }
+
+  if (recurrence === "monthly" || recurrence === "quarterly") {
+    const interval = recurrence === "monthly" ? 1 : 3
+    let occurrence = startAt
+    if (isBefore(occurrence, rangeStart)) {
+      const diffMonths = differenceInCalendarMonths(rangeStart, occurrence)
+      const steps = Math.floor(diffMonths / interval) * interval
+      occurrence = addMonths(occurrence, steps)
+      while (isBefore(occurrence, rangeStart)) {
+        occurrence = addMonths(occurrence, interval)
+      }
+    }
+    while (!isAfter(occurrence, rangeEnd)) {
+      occurrences.push(occurrence)
+      occurrence = addMonths(occurrence, interval)
+    }
+    return occurrences
+  }
+
+  return []
 }
 
 export default async function DashboardPage() {
@@ -64,6 +156,8 @@ export default async function DashboardPage() {
   const prevMonthStart = startOfMonth(subMonths(now, 1))
   const chartStart = startOfMonth(subMonths(now, 3))
   const chartEnd = endOfMonth(now)
+  const calendarStart = startOfWeek(subWeeks(now, 6), { weekStartsOn: 1 })
+  const calendarEnd = endOfWeek(addWeeks(now, 6), { weekStartsOn: 1 })
 
   const { data: itemsData, error: itemsError } = await supabase
     .from("inventory_items")
@@ -235,7 +329,23 @@ export default async function DashboardPage() {
     : { count: 0 }
 
   const completedCounts = latestCounts.length
-  const inProgressCounts = missingCounts.length
+  let pendingCounts = 0
+  let inProgressCounts = 0
+  if (!latestDate) {
+    pendingCounts = totalItems
+  } else {
+    const daysSinceLatest = differenceInCalendarDays(
+      new Date(),
+      parseISO(latestDate)
+    )
+    if (daysSinceLatest >= 3) {
+      pendingCounts = missingCounts.length
+      inProgressCounts = 0
+    } else {
+      inProgressCounts = missingCounts.length
+      pendingCounts = 0
+    }
+  }
   const completionRate =
     totalItems > 0 ? Math.round((completedCounts / totalItems) * 100) : 0
 
@@ -288,40 +398,95 @@ export default async function DashboardPage() {
     .slice(0, 5)
     .map(({ createdAt, ...rest }) => rest)
 
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 })
-  const weekEnd = addDays(weekStart, 6)
-  const weekKey = (date: Date) => format(date, "yyyy-MM-dd")
-  let weekReceipts: string[] = []
-  let weekCounts: string[] = []
+  const calendarStartLabel = format(calendarStart, "yyyy-MM-dd")
+  const calendarEndLabel = format(calendarEnd, "yyyy-MM-dd")
 
+  let calendarReceipts: string[] = []
   if (userId) {
-    const { data: weekReceiptsData } = await supabase
+    const { data: receiptRows, error: receiptError } = await supabase
       .from("receipts")
       .select("receipt_date")
       .eq("user_id", userId)
-      .gte("receipt_date", format(weekStart, "yyyy-MM-dd"))
-      .lte("receipt_date", format(weekEnd, "yyyy-MM-dd"))
-    weekReceipts = (weekReceiptsData ?? []).map((row) => row.receipt_date)
+      .gte("receipt_date", calendarStartLabel)
+      .lte("receipt_date", calendarEndLabel)
+
+    if (receiptError) throw new Error(receiptError.message)
+    calendarReceipts = (receiptRows ?? []).map((row) => row.receipt_date)
   }
 
-  const { data: weekCountsData } = await supabase
+  const { data: countRows, error: countRangeError } = await supabase
     .from("stock_counts")
     .select("count_date")
-    .gte("count_date", format(weekStart, "yyyy-MM-dd"))
-    .lte("count_date", format(weekEnd, "yyyy-MM-dd"))
-  weekCounts = (weekCountsData ?? []).map((row) => String(row.count_date))
+    .gte("count_date", calendarStartLabel)
+    .lte("count_date", calendarEndLabel)
 
-  const eventDates = new Set([...weekReceipts, ...weekCounts])
-  const weekDays = Array.from({ length: 7 }, (_, index) => {
-    const date = addDays(weekStart, index)
+  if (countRangeError) throw new Error(countRangeError.message)
+
+  const calendarCounts = (countRows ?? []).map((row) => String(row.count_date))
+
+  let reminders: ReminderRow[] = []
+  if (userId) {
+    const { data: reminderRows, error: reminderError } = await supabase
+      .from("reminders")
+      .select("id, title, notes, start_at, recurrence, color")
+      .eq("user_id", userId)
+      .order("start_at", { ascending: true })
+
+    if (reminderError) throw new Error(reminderError.message)
+    reminders = (reminderRows ?? []) as ReminderRow[]
+  }
+
+  const reminderOccurrences = reminders.flatMap((reminder) =>
+    buildOccurrences(reminder, calendarStart, calendarEnd).map((date) => ({
+      reminder,
+      date,
+    }))
+  )
+
+  const calendarEvents = [
+    ...calendarReceipts.map((date) => ({
+      date,
+      colorClass: "bg-chart-2",
+    })),
+    ...calendarCounts.map((date) => ({
+      date,
+      colorClass: "bg-chart-1",
+    })),
+    ...reminderOccurrences.map((entry) => ({
+      date: format(entry.date, "yyyy-MM-dd"),
+      colorClass:
+        colorClassMap[entry.reminder.color ?? "chart-1"] ?? "bg-chart-1",
+    })),
+  ]
+
+  const reminderWindowStart = startOfDay(now)
+  const reminderWindowEnd = endOfDay(addDays(now, 13))
+  const upcomingReminderOccurrences = reminders
+    .flatMap((reminder) =>
+      buildOccurrences(reminder, reminderWindowStart, reminderWindowEnd).map(
+        (date) => ({
+          reminder,
+          date,
+        })
+      )
+    )
+    .sort((a, b) => a.date.getTime() - b.date.getTime())
+
+  const reminderTasks = upcomingReminderOccurrences.slice(0, 4).map((entry) => {
+    const recurrenceKey = entry.reminder.recurrence ?? "none"
+    const label = recurrenceLabels[recurrenceKey] ?? "Reminder"
+    const timeLabel = format(entry.date, "EEE • h:mm a")
     return {
-      day: Number(format(date, "d")),
-      isToday: isSameDay(date, now),
-      hasEvent: eventDates.has(weekKey(date)),
+      id: `reminder-${entry.reminder.id}-${entry.date.toISOString()}`,
+      title: entry.reminder.title,
+      type: label,
+      time: timeLabel,
+      color: colorClassMap[entry.reminder.color ?? "chart-1"] ?? "bg-chart-1",
     }
   })
 
   const upcomingTasks = [
+    ...reminderTasks,
     ...(lowStockItems.length > 0
       ? [
           {
@@ -333,7 +498,7 @@ export default async function DashboardPage() {
           },
         ]
       : []),
-    ...(inProgressCounts > 0
+    ...((inProgressCounts + pendingCounts) > 0
       ? [
           {
             id: "count",
@@ -355,7 +520,7 @@ export default async function DashboardPage() {
           },
         ]
       : []),
-  ].slice(0, 3)
+  ].slice(0, 5)
 
   return (
     <AppShell
@@ -417,9 +582,9 @@ export default async function DashboardPage() {
               totalLabel={`KES ${Math.round(stockChartData.reduce((sum, row) => sum + row.value, 0)).toLocaleString()}`}
             />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <CategoryChart data={categoryChartData} />
+              <CategoryChart data={categoryChartData} totalCount={totalItems} />
               <TaskSummary
-                pending={pendingReceiptsCount ?? 0}
+                pending={pendingCounts}
                 inProgress={inProgressCounts}
                 completed={completedCounts}
                 completionRate={completionRate}
@@ -431,8 +596,9 @@ export default async function DashboardPage() {
           <div className="space-y-6">
             <CalendarWidget
               todayLabel={`Today, ${format(now, "d MMMM")}`}
-              weekDays={weekDays}
+              events={calendarEvents}
               upcomingTasks={upcomingTasks}
+              initialWeekStart={startOfWeek(now, { weekStartsOn: 1 })}
             />
             <LowStockAlert items={lowStockItems} />
             <ActivityFeed activities={activities} />

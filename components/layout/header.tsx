@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard,
   Package,
@@ -25,6 +25,7 @@ import {
   HelpCircle,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { useNotifications } from "@/components/notifications/use-notifications"
 
 const mobileMenuItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -36,6 +37,57 @@ const mobileMenuItems = [
   { name: "Help", href: "/help", icon: HelpCircle },
 ]
 
+const searchItems = [
+  {
+    name: "Dashboard",
+    href: "/dashboard",
+    description: "Overview and KPIs",
+    keywords: ["home", "overview", "kpi", "summary"],
+  },
+  {
+    name: "Stock Taking",
+    href: "/stock",
+    description: "Weekly counts and stock matrix",
+    keywords: ["inventory", "items", "counts", "reorder"],
+  },
+  {
+    name: "Reports",
+    href: "/reports",
+    description: "Receipts and exports",
+    keywords: ["expenses", "receipts", "pdf", "csv"],
+  },
+  {
+    name: "Analytics",
+    href: "/analytics",
+    description: "Trends and insights",
+    keywords: ["charts", "usage", "valuation"],
+  },
+  {
+    name: "Team",
+    href: "/team",
+    description: "Roles and access",
+    keywords: ["members", "permissions"],
+  },
+  {
+    name: "Settings",
+    href: "/settings",
+    description: "Preferences and profile",
+    keywords: ["account", "profile", "notifications"],
+  },
+  {
+    name: "Notifications",
+    href: "/notifications",
+    description: "Alerts and updates",
+    keywords: ["alerts", "messages"],
+  },
+  {
+    name: "Help & Support",
+    href: "/help",
+    description: "Guides and support",
+    keywords: ["faq", "docs", "support"],
+  },
+]
+
 interface HeaderProps {
   title?: string
   subtitle?: string
@@ -44,10 +96,13 @@ interface HeaderProps {
 export function Header({ title, subtitle }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
   const [userName, setUserName] = useState<string>("User")
   const [userRole, setUserRole] = useState<string>("Viewer")
   const [userEmail, setUserEmail] = useState<string>("")
   const pathname = usePathname()
+  const router = useRouter()
+  const { notifications, unreadCount, isLoading: notificationsLoading } = useNotifications()
 
   useEffect(() => {
     const supabase = createClient()
@@ -80,6 +135,32 @@ export function Header({ title, subtitle }: HeaderProps) {
     }
     return (userName[0] ?? "U").toUpperCase()
   }, [userName])
+
+  const searchResults = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+    if (!query) return []
+    return searchItems
+      .filter((item) => {
+        const haystack = [item.name, item.description, ...(item.keywords ?? [])]
+          .join(" ")
+          .toLowerCase()
+        return haystack.includes(query)
+      })
+      .slice(0, 6)
+  }, [searchQuery])
+
+  const handleSearchSelect = (href: string) => {
+    setSearchQuery("")
+    setSearchOpen(false)
+    router.push(href)
+  }
+
+  const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter" && searchResults.length > 0) {
+      event.preventDefault()
+      handleSearchSelect(searchResults[0].href)
+    }
+  }
 
   return (
     <>
@@ -129,8 +210,36 @@ export function Header({ title, subtitle }: HeaderProps) {
               <Input
                 type="search"
                 placeholder="Search items, reports..."
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                onKeyDown={handleSearchKeyDown}
                 className="w-full pl-10 bg-secondary/50 border-border focus:bg-secondary text-foreground placeholder:text-muted-foreground"
               />
+              {searchQuery.trim() && (
+                <div className="absolute left-0 right-0 top-full z-50 mt-2 rounded-xl border border-border bg-card shadow-xl">
+                  {searchResults.length === 0 ? (
+                    <div className="px-4 py-3 text-xs text-muted-foreground">
+                      No matches found. Try “reports” or “stock”.
+                    </div>
+                  ) : (
+                    <div className="py-1">
+                      {searchResults.map((item) => (
+                        <button
+                          key={item.href}
+                          type="button"
+                          onClick={() => handleSearchSelect(item.href)}
+                          className="flex w-full items-start gap-3 px-4 py-2 text-left text-sm hover:bg-accent/50"
+                        >
+                          <div>
+                            <p className="font-medium text-foreground">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">{item.description}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -156,27 +265,60 @@ export function Header({ title, subtitle }: HeaderProps) {
                   className="relative text-muted-foreground hover:text-foreground"
                 >
                   <Bell className="h-5 w-5" />
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-chart-2 rounded-full" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-chart-2 px-1 text-[10px] font-semibold text-foreground">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
                   <span className="sr-only">Notifications</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-80 bg-card border-border">
                 <DropdownMenuLabel className="text-foreground">Notifications</DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-border" />
-                <DropdownMenuItem className="text-muted-foreground hover:text-foreground focus:text-foreground">
-                  <div className="flex flex-col gap-1">
-                    <p className="text-sm font-medium text-foreground">Low Stock Alert</p>
-                    <p className="text-xs text-muted-foreground">Coffee sachets running low - 23 remaining</p>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="text-muted-foreground hover:text-foreground focus:text-foreground">
-                  <div className="flex flex-col gap-1">
-                    <p className="text-sm font-medium text-foreground">Weekly Report Ready</p>
-                    <p className="text-xs text-muted-foreground">Your stock report for this week is ready</p>
-                  </div>
-                </DropdownMenuItem>
+                {notificationsLoading ? (
+                  <DropdownMenuItem className="text-muted-foreground hover:text-foreground focus:text-foreground">
+                    <div className="flex flex-col gap-1">
+                      <p className="text-sm font-medium text-foreground">Loading updates...</p>
+                      <p className="text-xs text-muted-foreground">Checking alerts and reminders.</p>
+                    </div>
+                  </DropdownMenuItem>
+                ) : notifications.length === 0 ? (
+                  <DropdownMenuItem className="text-muted-foreground hover:text-foreground focus:text-foreground">
+                    <div className="flex flex-col gap-1">
+                      <p className="text-sm font-medium text-foreground">No notifications</p>
+                      <p className="text-xs text-muted-foreground">You are all caught up.</p>
+                    </div>
+                  </DropdownMenuItem>
+                ) : (
+                  notifications.slice(0, 4).map((notification) => (
+                    <DropdownMenuItem
+                      key={notification.id}
+                      className="text-muted-foreground hover:text-foreground focus:text-foreground"
+                      onSelect={(event) => {
+                        if (!notification.href) return
+                        event.preventDefault()
+                        router.push(notification.href)
+                      }}
+                    >
+                      <div className="flex flex-col gap-1">
+                        <p className="text-sm font-medium text-foreground">{notification.title}</p>
+                        <p className="text-xs text-muted-foreground">{notification.message}</p>
+                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                          {notification.time}
+                        </span>
+                      </div>
+                    </DropdownMenuItem>
+                  ))
+                )}
                 <DropdownMenuSeparator className="bg-border" />
-                <DropdownMenuItem className="text-chart-1 focus:text-chart-1">
+                <DropdownMenuItem
+                  className="text-chart-1 focus:text-chart-1"
+                  onSelect={(event) => {
+                    event.preventDefault()
+                    router.push("/notifications")
+                  }}
+                >
                   View all notifications
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -193,7 +335,7 @@ export function Header({ title, subtitle }: HeaderProps) {
                     <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-[#3a3a40] to-[#2a2a30] border border-[#4a4a50]">
                       <span className="text-xs font-semibold text-foreground">{initials}</span>
                     </div>
-                    <div className="flex max-w-[90px] flex-col text-left leading-tight sm:max-w-[160px]">
+                    <div className="hidden max-w-[90px] flex-col text-left leading-tight sm:flex sm:max-w-[160px]">
                       <span className="text-[11px] font-semibold text-foreground sm:text-sm truncate">
                         {userName}
                       </span>
@@ -217,7 +359,13 @@ export function Header({ title, subtitle }: HeaderProps) {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-border" />
-                <DropdownMenuItem className="text-muted-foreground hover:text-foreground focus:text-foreground">
+                <DropdownMenuItem
+                  className="text-muted-foreground hover:text-foreground focus:text-foreground"
+                  onSelect={(event) => {
+                    event.preventDefault()
+                    router.push("/settings")
+                  }}
+                >
                   Profile Settings
                 </DropdownMenuItem>
                 <DropdownMenuItem className="text-muted-foreground hover:text-foreground focus:text-foreground">
@@ -240,9 +388,37 @@ export function Header({ title, subtitle }: HeaderProps) {
               <Input
                 type="search"
                 placeholder="Search items, reports..."
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                onKeyDown={handleSearchKeyDown}
                 className="w-full pl-10 bg-secondary/50 border-border text-foreground placeholder:text-muted-foreground"
                 autoFocus
               />
+              {searchQuery.trim() && (
+                <div className="absolute left-0 right-0 top-full z-50 mt-2 rounded-xl border border-border bg-card shadow-xl">
+                  {searchResults.length === 0 ? (
+                    <div className="px-4 py-3 text-xs text-muted-foreground">
+                      No matches found. Try “reports” or “stock”.
+                    </div>
+                  ) : (
+                    <div className="py-1">
+                      {searchResults.map((item) => (
+                        <button
+                          key={item.href}
+                          type="button"
+                          onClick={() => handleSearchSelect(item.href)}
+                          className="flex w-full items-start gap-3 px-4 py-2 text-left text-sm hover:bg-accent/50"
+                        >
+                          <div>
+                            <p className="font-medium text-foreground">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">{item.description}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}

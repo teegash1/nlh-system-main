@@ -288,3 +288,92 @@ from
   cross join latest
   left join stock_counts sc on sc.item_id = i.id
   and sc.count_date = latest.latest_date;
+
+
+-- Reminders (scheduler)
+create table public.reminders (
+  id uuid not null default gen_random_uuid (),
+  user_id uuid not null,
+  title text not null,
+  notes text null,
+  start_at timestamp with time zone not null,
+  recurrence text not null default 'none'::text,
+  color text not null default 'chart-1'::text,
+  created_at timestamp with time zone not null default now(),
+  constraint reminders_pkey primary key (id),
+  constraint reminders_user_id_fkey foreign KEY (user_id) references auth.users (id) on delete cascade,
+  constraint reminders_recurrence_check check (
+    recurrence = any (
+      array[
+        'none'::text,
+        'weekly'::text,
+        'biweekly'::text,
+        'monthly'::text,
+        'quarterly'::text
+      ]
+    )
+  )
+) TABLESPACE pg_default;
+
+create index IF not exists idx_reminders_user_date on public.reminders using btree (user_id, start_at) TABLESPACE pg_default;
+
+alter table public.reminders enable row level security;
+
+create policy "Reminders are readable by owner"
+on public.reminders
+for select
+to authenticated
+using (auth.uid() = user_id);
+
+create policy "Reminders are insertable by owner"
+on public.reminders
+for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+create policy "Reminders are updateable by owner"
+on public.reminders
+for update
+to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+create policy "Reminders are deleteable by owner"
+on public.reminders
+for delete
+to authenticated
+using (auth.uid() = user_id);
+
+
+-- Notification read state
+create table public.notification_reads (
+  id uuid not null default gen_random_uuid (),
+  user_id uuid not null,
+  notification_key text not null,
+  read_at timestamp with time zone not null default now(),
+  constraint notification_reads_pkey primary key (id),
+  constraint notification_reads_user_id_fkey foreign KEY (user_id) references auth.users (id) on delete cascade,
+  constraint notification_reads_unique unique (user_id, notification_key)
+) TABLESPACE pg_default;
+
+create index IF not exists idx_notification_reads_user_key on public.notification_reads using btree (user_id, notification_key) TABLESPACE pg_default;
+
+alter table public.notification_reads enable row level security;
+
+create policy "Notification reads are readable by owner"
+on public.notification_reads
+for select
+to authenticated
+using (auth.uid() = user_id);
+
+create policy "Notification reads are insertable by owner"
+on public.notification_reads
+for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+create policy "Notification reads are deleteable by owner"
+on public.notification_reads
+for delete
+to authenticated
+using (auth.uid() = user_id);

@@ -1,49 +1,26 @@
 "use client"
 
+import { useMemo, useState } from "react"
+import {
+  addDays,
+  addWeeks,
+  format,
+  isSameDay,
+  isSameWeek,
+  startOfWeek,
+  subWeeks,
+} from "date-fns"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-const currentWeek = [
-  { day: 20, isToday: true, hasEvent: true },
-  { day: 21, isToday: false, hasEvent: false },
-  { day: 22, isToday: false, hasEvent: true },
-  { day: 23, isToday: false, hasEvent: false },
-  { day: 24, isToday: false, hasEvent: false },
-  { day: 25, isToday: false, hasEvent: true },
-  { day: 26, isToday: false, hasEvent: false },
-]
 
-const upcomingTasks = [
-  {
-    id: "1",
-    title: "Weekly Stock Count",
-    type: "Inventory",
-    time: "9:30 AM",
-    color: "bg-chart-1",
-  },
-  {
-    id: "2",
-    title: "Order Supplies",
-    type: "Procurement",
-    time: "11:00 AM",
-    color: "bg-chart-3",
-  },
-  {
-    id: "3",
-    title: "Generate Report",
-    type: "Admin",
-    time: "2:00 PM",
-    color: "bg-chart-2",
-  },
-]
-
-interface WeekDay {
-  day: number
-  isToday: boolean
-  hasEvent: boolean
+interface CalendarEvent {
+  date: string
+  colorClass: string
 }
 
 interface UpcomingTask {
@@ -56,27 +33,73 @@ interface UpcomingTask {
 
 interface CalendarWidgetProps {
   todayLabel?: string
-  weekDays?: WeekDay[]
+  events?: CalendarEvent[]
   upcomingTasks?: UpcomingTask[]
+  initialWeekStart?: Date
 }
 
 export function CalendarWidget({
-  todayLabel = "Today, 20 January",
-  weekDays = currentWeek,
-  upcomingTasks: taskItems = upcomingTasks,
+  todayLabel = "Today",
+  events = [],
+  upcomingTasks: taskItems = [],
+  initialWeekStart,
 }: CalendarWidgetProps) {
+  const [weekStart, setWeekStart] = useState<Date>(
+    initialWeekStart ?? startOfWeek(new Date(), { weekStartsOn: 1 })
+  )
+
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, string[]>()
+    events.forEach((event) => {
+      const key = event.date
+      const existing = map.get(key) ?? []
+      if (!existing.includes(event.colorClass)) {
+        existing.push(event.colorClass)
+      }
+      map.set(key, existing)
+    })
+    return map
+  }, [events])
+
+  const weekDays = useMemo(() => {
+    const start = startOfWeek(weekStart, { weekStartsOn: 1 })
+    return Array.from({ length: 7 }, (_, index) => {
+      const date = addDays(start, index)
+      const key = format(date, "yyyy-MM-dd")
+      return {
+        label: format(date, "d"),
+        isToday: isSameDay(date, new Date()),
+        colors: eventsByDate.get(key) ?? [],
+      }
+    })
+  }, [weekStart, eventsByDate])
+
+  const headerLabel = isSameWeek(weekStart, new Date(), { weekStartsOn: 1 })
+    ? todayLabel
+    : `Week of ${format(weekStart, "MMM d")}`
+
   return (
     <Card className="bg-card border-border">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-semibold text-foreground">
-            {todayLabel}
+            {headerLabel}
           </CardTitle>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-foreground">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => setWeekStart((prev) => subWeeks(prev, 1))}
+            >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-foreground">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => setWeekStart((prev) => addWeeks(prev, 1))}
+            >
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
@@ -96,21 +119,30 @@ export function CalendarWidget({
                     : "text-foreground hover:bg-accent cursor-pointer"
                 )}
               >
-                {weekDays[index]?.day}
+                {weekDays[index]?.label}
               </div>
-              {weekDays[index]?.hasEvent && (
+              {weekDays[index]?.colors.length ? (
                 <div className="flex gap-0.5">
-                  <div className="w-1 h-1 rounded-full bg-chart-1" />
-                  <div className="w-1 h-1 rounded-full bg-chart-2" />
+                  {weekDays[index]?.colors.slice(0, 3).map((color) => (
+                    <div
+                      key={color}
+                      className={cn("w-1 h-1 rounded-full", color)}
+                    />
+                  ))}
                 </div>
-              )}
+              ) : null}
             </div>
           ))}
         </div>
 
         {/* Upcoming Tasks */}
         <div className="space-y-2">
-          {taskItems.map((task) => (
+          {taskItems.length === 0 ? (
+            <div className="rounded-lg border border-border bg-secondary/30 px-3 py-2 text-xs text-muted-foreground">
+              No reminders scheduled yet.
+            </div>
+          ) : (
+            taskItems.map((task) => (
             <div
               key={task.id}
               className={cn(
@@ -125,7 +157,8 @@ export function CalendarWidget({
               </div>
               <span className="text-[11px] text-muted-foreground sm:text-xs">{task.time}</span>
             </div>
-          ))}
+            ))
+          )}
         </div>
       </CardContent>
     </Card>

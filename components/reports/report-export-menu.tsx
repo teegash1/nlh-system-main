@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Download, FileText, Sheet } from "lucide-react"
-import { format } from "date-fns"
+import { format, isBefore, isSameDay } from "date-fns"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -747,13 +747,21 @@ export function ReportExportMenu({ reportType, reportTitle }: ReportExportMenuPr
             mode="range"
             selected={{ from: range.from, to: range.to }}
             defaultMonth={range.from}
-            onSelect={(nextRange) => {
-              const from = nextRange?.from
-              const to = nextRange?.to
-              setRange({ from, to })
-              if (from && to) {
-                setRangeOpen(false)
+            onDayClick={(day) => {
+              if (!range.from || range.to) {
+                setRange({ from: day, to: undefined })
+                return
               }
+
+              if (isSameDay(day, range.from)) {
+                setRange({ from: range.from, to: undefined })
+                return
+              }
+
+              const from = isBefore(day, range.from) ? day : range.from
+              const to = isBefore(day, range.from) ? range.from : day
+              setRange({ from, to })
+              setRangeOpen(false)
             }}
             numberOfMonths={2}
             className="bg-card"

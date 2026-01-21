@@ -1,11 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { AppShell } from "@/components/layout/app-shell"
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { useNotifications } from "@/components/notifications/use-notifications"
 import {
   Bell,
   AlertTriangle,
@@ -16,66 +18,6 @@ import {
   Trash2,
   CheckCheck,
 } from "lucide-react"
-
-interface Notification {
-  id: string
-  type: "alert" | "update" | "report" | "success"
-  title: string
-  message: string
-  time: string
-  read: boolean
-}
-
-const initialNotifications: Notification[] = [
-  {
-    id: "1",
-    type: "alert",
-    title: "Low Stock Alert",
-    message: "Coffee sachets are running low - only 23 remaining. Consider restocking soon.",
-    time: "2 minutes ago",
-    read: false,
-  },
-  {
-    id: "2",
-    type: "report",
-    title: "Weekly Report Ready",
-    message: "Your stock report for Week 3 (Jan 15-21) is ready for download.",
-    time: "1 hour ago",
-    read: false,
-  },
-  {
-    id: "3",
-    type: "update",
-    title: "Stock Updated",
-    message: "Sugar inventory has been updated to 3.5kg by Admin User.",
-    time: "2 hours ago",
-    read: false,
-  },
-  {
-    id: "4",
-    type: "alert",
-    title: "Critical: Out of Stock",
-    message: "Drinking Chocolate is now out of stock. Immediate restocking required.",
-    time: "3 hours ago",
-    read: true,
-  },
-  {
-    id: "5",
-    type: "success",
-    title: "Backup Complete",
-    message: "Your data backup was completed successfully.",
-    time: "Yesterday",
-    read: true,
-  },
-  {
-    id: "6",
-    type: "report",
-    title: "Monthly Summary",
-    message: "December 2025 stock summary report is now available.",
-    time: "2 days ago",
-    read: true,
-  },
-]
 
 const iconMap = {
   alert: AlertTriangle,
@@ -92,28 +34,29 @@ const colorMap = {
 }
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState(initialNotifications)
+  const {
+    notifications,
+    isLoading,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+  } = useNotifications()
   const [filter, setFilter] = useState<"all" | "unread">("all")
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set())
 
-  const unreadCount = notifications.filter((n) => !n.read).length
-
-  const filteredNotifications = notifications.filter((n) => {
-    if (filter === "unread") return !n.read
-    return true
-  })
-
-  const markAsRead = (id: string) => {
-    setNotifications(
-      notifications.map((n) => (n.id === id ? { ...n, read: true } : n))
-    )
-  }
-
-  const markAllAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, read: true })))
-  }
+  const filteredNotifications = useMemo(() => {
+    const visible = notifications.filter((n) => !hiddenIds.has(n.id))
+    return filter === "unread"
+      ? visible.filter((n) => !n.read)
+      : visible
+  }, [notifications, hiddenIds, filter])
 
   const deleteNotification = (id: string) => {
-    setNotifications(notifications.filter((n) => n.id !== id))
+    setHiddenIds((prev) => {
+      const next = new Set(prev)
+      next.add(id)
+      return next
+    })
   }
 
   return (
@@ -128,8 +71,8 @@ export default function NotificationsPage() {
         </div>
 
         {/* Header Actions */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <Button
               variant="outline"
               size="sm"
@@ -184,7 +127,17 @@ export default function NotificationsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            {filteredNotifications.length === 0 ? (
+            {isLoading ? (
+              <div className="text-center py-12">
+                <div className="flex items-center justify-center w-16 h-16 rounded-full bg-secondary mx-auto mb-4">
+                  <Bell className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <p className="text-sm font-medium text-foreground">Loading notifications</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Checking alerts, reminders, and reports.
+                </p>
+              </div>
+            ) : filteredNotifications.length === 0 ? (
               <div className="text-center py-12">
                 <div className="flex items-center justify-center w-16 h-16 rounded-full bg-secondary mx-auto mb-4">
                   <Bell className="h-8 w-8 text-muted-foreground" />
@@ -202,7 +155,7 @@ export default function NotificationsPage() {
                     <div
                       key={notification.id}
                       className={cn(
-                        "flex items-start gap-4 p-4 rounded-xl border border-border transition-colors",
+                        "flex flex-col gap-3 p-4 rounded-xl border border-border transition-colors sm:flex-row sm:items-start sm:gap-4",
                         notification.read ? "bg-secondary/20" : "bg-secondary/40"
                       )}
                     >
@@ -214,14 +167,14 @@ export default function NotificationsPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
-                          <div>
+                          <div className="space-y-1">
                             <p className={cn(
                               "text-sm text-foreground",
                               !notification.read && "font-semibold"
                             )}>
                               {notification.title}
                             </p>
-                            <p className="text-xs text-muted-foreground mt-1">
+                            <p className="text-xs text-muted-foreground">
                               {notification.message}
                             </p>
                           </div>
@@ -229,26 +182,36 @@ export default function NotificationsPage() {
                             <div className="w-2 h-2 rounded-full bg-chart-1 shrink-0 mt-1.5" />
                           )}
                         </div>
-                        <div className="flex items-center gap-3 mt-3">
-                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+                          <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
                             {notification.time}
                           </span>
-                          {!notification.read && (
+                          <div className="flex flex-wrap items-center gap-2">
+                            {notification.href && (
+                              <Link
+                                href={notification.href}
+                                className="text-chart-1 hover:underline"
+                              >
+                                Open
+                              </Link>
+                            )}
+                            {!notification.read && (
+                              <button
+                                onClick={() => markAsRead(notification.id)}
+                                className="text-chart-1 hover:underline"
+                              >
+                                Mark as read
+                              </button>
+                            )}
                             <button
-                              onClick={() => markAsRead(notification.id)}
-                              className="text-[10px] text-chart-1 hover:underline"
+                              onClick={() => deleteNotification(notification.id)}
+                              className="flex items-center gap-1 text-muted-foreground hover:text-chart-4"
                             >
-                              Mark as read
+                              <Trash2 className="h-3 w-3" />
+                              Delete
                             </button>
-                          )}
-                          <button
-                            onClick={() => deleteNotification(notification.id)}
-                            className="text-[10px] text-muted-foreground hover:text-chart-4 flex items-center gap-1"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                            Delete
-                          </button>
+                          </div>
                         </div>
                       </div>
                     </div>
