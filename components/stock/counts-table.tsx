@@ -46,22 +46,8 @@ export function CountsTable({ counts }: CountsTableProps) {
         <span>Actions</span>
       </div>
       <div className="max-h-[70vh] divide-y divide-border overflow-y-auto md:max-h-[900px]">
-        {counts.map((count) => (
-          <div
-            key={count.id}
-            className="grid gap-3 px-4 py-3 text-sm md:grid-cols-[1.4fr_1fr_1.4fr_120px_140px] md:items-center"
-          >
-            <div>
-              <p className="font-medium text-foreground">{count.itemName}</p>
-              <p className="text-[11px] text-muted-foreground">
-                {count.qtyUnit || "unit not set"}
-              </p>
-            </div>
-            <div className="text-muted-foreground">{count.countDate}</div>
-            <div className="text-foreground">{count.rawValue}</div>
-            <div className="text-muted-foreground">
-              {count.qtyNumeric ?? "—"}
-            </div>
+        {counts.map((count) => {
+          const actions = (
             <div className="flex flex-wrap gap-2">
               <EditCountDialog count={count} />
               <ConfirmDialog
@@ -81,8 +67,66 @@ export function CountsTable({ counts }: CountsTableProps) {
                 }
               />
             </div>
-          </div>
-        ))}
+          )
+
+          return (
+            <div key={count.id} className="px-4 py-3 text-sm">
+              <div className="rounded-lg border border-border/60 bg-secondary/10 p-3 md:hidden">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Item
+                    </p>
+                    <p className="text-base font-semibold text-foreground">
+                      {count.itemName}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {count.qtyUnit || "unit not set"}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Date
+                    </p>
+                    <p className="text-base font-semibold text-foreground">
+                      {count.countDate}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Raw Count
+                    </p>
+                    <p className="text-foreground">{count.rawValue}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Numeric
+                    </p>
+                    <p className="text-foreground">{count.qtyNumeric ?? "—"}</p>
+                  </div>
+                </div>
+                <div className="mt-3">{actions}</div>
+              </div>
+
+              <div className="hidden md:grid md:grid-cols-[1.4fr_1fr_1.4fr_120px_140px] md:items-center md:gap-3">
+                <div>
+                  <p className="font-medium text-foreground">{count.itemName}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {count.qtyUnit || "unit not set"}
+                  </p>
+                </div>
+                <div className="text-muted-foreground">{count.countDate}</div>
+                <div className="text-foreground">{count.rawValue}</div>
+                <div className="text-muted-foreground">
+                  {count.qtyNumeric ?? "—"}
+                </div>
+                {actions}
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

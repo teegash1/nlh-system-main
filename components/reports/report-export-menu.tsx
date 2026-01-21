@@ -677,7 +677,7 @@ export function ReportExportMenu({ reportType, reportTitle }: ReportExportMenuPr
         <Button
           variant="outline"
           size="sm"
-          className="border-border text-muted-foreground hover:text-foreground hover:bg-accent premium-btn bg-transparent"
+          className="w-full justify-between border-border text-muted-foreground hover:text-foreground hover:bg-accent premium-btn bg-transparent sm:w-auto"
           disabled={isLoading}
         >
           <Download className="h-4 w-4 mr-2" />
@@ -708,7 +708,7 @@ export function ReportExportMenu({ reportType, reportTitle }: ReportExportMenuPr
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
       <Popover
         open={rangeOpen}
         onOpenChange={(nextOpen) => {
@@ -723,7 +723,7 @@ export function ReportExportMenu({ reportType, reportTitle }: ReportExportMenuPr
           <Button
             variant="outline"
             size="sm"
-            className="border-border text-muted-foreground hover:text-foreground hover:bg-accent premium-btn bg-transparent"
+            className="w-full justify-between border-border text-muted-foreground hover:text-foreground hover:bg-accent premium-btn bg-transparent sm:w-auto"
           >
             {rangeLabel}
           </Button>

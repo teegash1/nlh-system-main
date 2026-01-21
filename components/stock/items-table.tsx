@@ -48,23 +48,8 @@ export function ItemsTable({ items, categories }: ItemsTableProps) {
         <span>Actions</span>
       </div>
       <div className="max-h-[70vh] divide-y divide-border overflow-y-auto md:max-h-[900px]">
-        {items.map((item) => (
-          <div
-            key={item.id}
-            className="grid gap-3 px-4 py-3 text-sm md:grid-cols-[1.4fr_1fr_100px_120px_120px_150px] md:items-center"
-          >
-            <div>
-              <p className="font-medium text-foreground">{item.name}</p>
-              <p className="text-[11px] text-muted-foreground">
-                Latest date: {item.asOf ?? "—"}
-              </p>
-            </div>
-            <div className="text-muted-foreground">{item.category}</div>
-            <div className="text-muted-foreground">{item.unit}</div>
-            <div className="text-muted-foreground">
-              {item.reorderLevel ?? "—"}
-            </div>
-            <div className="text-foreground">{item.latestCount}</div>
+        {items.map((item) => {
+          const actions = (
             <div className="flex flex-wrap gap-2">
               <EditItemDialog
                 item={{
@@ -93,8 +78,73 @@ export function ItemsTable({ items, categories }: ItemsTableProps) {
                 }
               />
             </div>
-          </div>
-        ))}
+          )
+
+          return (
+            <div key={item.id} className="px-4 py-3 text-sm">
+              <div className="rounded-lg border border-border/60 bg-secondary/10 p-3 md:hidden">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Item
+                    </p>
+                    <p className="text-base font-semibold text-foreground">
+                      {item.name}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Latest date: {item.asOf ?? "—"}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Latest
+                    </p>
+                    <p className="text-base font-semibold text-foreground">
+                      {item.latestCount}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Category
+                    </p>
+                    <p className="text-foreground">{item.category}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Unit
+                    </p>
+                    <p className="text-foreground">{item.unit}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Reorder
+                    </p>
+                    <p className="text-foreground">{item.reorderLevel ?? "—"}</p>
+                  </div>
+                </div>
+                <div className="mt-3">{actions}</div>
+              </div>
+
+              <div className="hidden md:grid md:grid-cols-[1.4fr_1fr_100px_120px_120px_150px] md:items-center md:gap-3">
+                <div>
+                  <p className="font-medium text-foreground">{item.name}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Latest date: {item.asOf ?? "—"}
+                  </p>
+                </div>
+                <div className="text-muted-foreground">{item.category}</div>
+                <div className="text-muted-foreground">{item.unit}</div>
+                <div className="text-muted-foreground">
+                  {item.reorderLevel ?? "—"}
+                </div>
+                <div className="text-foreground">{item.latestCount}</div>
+                {actions}
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

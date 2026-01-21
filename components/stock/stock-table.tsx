@@ -155,103 +155,60 @@ export function StockTable({
       )}
 
       <div className="border border-border rounded-xl overflow-hidden">
-        <div className="max-h-[70vh] overflow-auto md:max-h-[760px]">
-          <div className="min-w-[900px]">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-secondary/30 hover:bg-secondary/30 border-border">
-              <TableHead className="text-muted-foreground font-semibold">
-                <button
-                  className="flex items-center gap-1 hover:text-foreground transition-colors"
-                  onClick={() => handleSort("item")}
-                >
-                  Item
-                  {getSortIcon("item")}
-                </button>
-              </TableHead>
-              <TableHead className="text-muted-foreground font-semibold">
-                <button
-                  className="flex items-center gap-1 hover:text-foreground transition-colors"
-                  onClick={() => handleSort("category")}
-                >
-                  Category
-                  {getSortIcon("category")}
-                </button>
-              </TableHead>
-              <TableHead className="text-muted-foreground font-semibold">
-                <button
-                  className="flex items-center gap-1 hover:text-foreground transition-colors"
-                  onClick={() => handleSort("unit")}
-                >
-                  Unit
-                  {getSortIcon("unit")}
-                </button>
-              </TableHead>
-              <TableHead className="text-muted-foreground font-semibold text-right">
-                <button
-                  className="flex items-center gap-1 ml-auto hover:text-foreground transition-colors"
-                  onClick={() => handleSort("reorderLevel")}
-                >
-                  Reorder
-                  {getSortIcon("reorderLevel")}
-                </button>
-              </TableHead>
-              {weeks.map((week) => (
-                <TableHead
-                  key={week}
-                  className="text-muted-foreground font-semibold text-center min-w-[100px]"
-                >
-                  {week}
-                </TableHead>
-              ))}
-              <TableHead className="text-muted-foreground font-semibold">
-                <button
-                  className="flex items-center gap-1 hover:text-foreground transition-colors"
-                  onClick={() => handleSort("status")}
-                >
-                  Status
-                  {getSortIcon("status")}
-                </button>
-              </TableHead>
-              {showActions && (
-                <TableHead className="text-muted-foreground font-semibold w-[50px]">
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              )}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sortedData.map((item, index) => (
-              <TableRow
+        <div className="max-h-[70vh] overflow-y-auto md:hidden">
+          <div className="space-y-3 p-3">
+            {sortedData.map((item) => (
+              <div
                 key={item.id}
-                className={cn(
-                  "border-border hover:bg-accent/30 transition-colors",
-                  index % 2 === 0 ? "bg-card" : "bg-secondary/10"
-                )}
+                className="rounded-lg border border-border/60 bg-secondary/10 p-3"
               >
-                <TableCell className="font-medium text-foreground">
-                  {item.item}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {item.category}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {item.unit}
-                </TableCell>
-                <TableCell className="text-right font-mono text-foreground">
-                  {item.reorderLevel ?? "—"}
-                </TableCell>
-                {weeks.map((week) => (
-                  <TableCell
-                    key={week}
-                    className="text-center text-muted-foreground"
-                  >
-                    {item.weekData[week] || "-"}
-                  </TableCell>
-                ))}
-                <TableCell>{getStatusBadge(item.status)}</TableCell>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Item
+                    </p>
+                    <p className="text-base font-semibold text-foreground">
+                      {item.item}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {item.category}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Status
+                    </p>
+                    {getStatusBadge(item.status)}
+                  </div>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Unit
+                    </p>
+                    <p className="text-foreground">{item.unit}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Reorder
+                    </p>
+                    <p className="text-foreground">{item.reorderLevel ?? "—"}</p>
+                  </div>
+                </div>
+                <div className="mt-3 space-y-2 text-xs">
+                  {weeks.map((week) => (
+                    <div key={week} className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                        Count {week}
+                      </span>
+                      <span className="text-sm text-foreground">
+                        {item.weekData[week] || "—"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
                 {showActions && (
-                  <TableCell>
+                  <div className="mt-3 flex justify-end">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
@@ -284,12 +241,148 @@ export function StockTable({
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </TableCell>
+                  </div>
                 )}
-              </TableRow>
+              </div>
             ))}
-          </TableBody>
-        </Table>
+          </div>
+        </div>
+
+        <div className="hidden md:block md:max-h-[760px] md:overflow-auto">
+          <div className="min-w-[900px]">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-secondary/30 hover:bg-secondary/30 border-border">
+                  <TableHead className="text-muted-foreground font-semibold">
+                    <button
+                      className="flex items-center gap-1 hover:text-foreground transition-colors"
+                      onClick={() => handleSort("item")}
+                    >
+                      Item
+                      {getSortIcon("item")}
+                    </button>
+                  </TableHead>
+                  <TableHead className="text-muted-foreground font-semibold">
+                    <button
+                      className="flex items-center gap-1 hover:text-foreground transition-colors"
+                      onClick={() => handleSort("category")}
+                    >
+                      Category
+                      {getSortIcon("category")}
+                    </button>
+                  </TableHead>
+                  <TableHead className="text-muted-foreground font-semibold">
+                    <button
+                      className="flex items-center gap-1 hover:text-foreground transition-colors"
+                      onClick={() => handleSort("unit")}
+                    >
+                      Unit
+                      {getSortIcon("unit")}
+                    </button>
+                  </TableHead>
+                  <TableHead className="text-muted-foreground font-semibold text-right">
+                    <button
+                      className="flex items-center gap-1 ml-auto hover:text-foreground transition-colors"
+                      onClick={() => handleSort("reorderLevel")}
+                    >
+                      Reorder
+                      {getSortIcon("reorderLevel")}
+                    </button>
+                  </TableHead>
+                  {weeks.map((week) => (
+                    <TableHead
+                      key={week}
+                      className="text-muted-foreground font-semibold text-center min-w-[100px]"
+                    >
+                      {week}
+                    </TableHead>
+                  ))}
+                  <TableHead className="text-muted-foreground font-semibold">
+                    <button
+                      className="flex items-center gap-1 hover:text-foreground transition-colors"
+                      onClick={() => handleSort("status")}
+                    >
+                      Status
+                      {getSortIcon("status")}
+                    </button>
+                  </TableHead>
+                  {showActions && (
+                    <TableHead className="text-muted-foreground font-semibold w-[50px]">
+                      <span className="sr-only">Actions</span>
+                    </TableHead>
+                  )}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedData.map((item, index) => (
+                  <TableRow
+                    key={item.id}
+                    className={cn(
+                      "border-border hover:bg-accent/30 transition-colors",
+                      index % 2 === 0 ? "bg-card" : "bg-secondary/10"
+                    )}
+                  >
+                    <TableCell className="font-medium text-foreground">
+                      {item.item}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {item.category}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {item.unit}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-foreground">
+                      {item.reorderLevel ?? "—"}
+                    </TableCell>
+                    {weeks.map((week) => (
+                      <TableCell
+                        key={week}
+                        className="text-center text-muted-foreground"
+                      >
+                        {item.weekData[week] || "-"}
+                      </TableCell>
+                    ))}
+                    <TableCell>{getStatusBadge(item.status)}</TableCell>
+                    {showActions && (
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-muted-foreground hover:text-foreground"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Actions</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-card border-border">
+                            {onEdit && (
+                              <DropdownMenuItem
+                                onClick={() => onEdit(item)}
+                                className="text-muted-foreground hover:text-foreground focus:text-foreground"
+                              >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                            {onDelete && (
+                              <DropdownMenuItem
+                                onClick={() => onDelete(item)}
+                                className="text-chart-4 hover:text-chart-4 focus:text-chart-4"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         </div>
       </div>

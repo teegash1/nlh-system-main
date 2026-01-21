@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
 
@@ -47,9 +48,12 @@ export function CategoryChart({
           <CardTitle className="text-base font-semibold text-foreground">
             Stock by Category
           </CardTitle>
-          <button className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+          <Link
+            href="/stock"
+            className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
             View details
-          </button>
+          </Link>
         </div>
       </CardHeader>
       <CardContent>

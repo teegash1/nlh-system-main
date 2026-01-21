@@ -32,25 +32,25 @@ export function StatCard({
     <Card className={cn("bg-card border-border hover:border-accent transition-colors duration-200", className)}>
       <CardContent className="p-5">
         <div className="flex items-start justify-between">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider sm:text-xs">
               {title}
             </span>
-            <span className="text-2xl font-bold text-foreground tracking-tight">
+            <span className="text-lg font-bold text-foreground tracking-tight sm:text-2xl break-words">
               {value}
             </span>
             {(change !== undefined || changeLabel) && (
-              <div className="flex items-center gap-1.5 mt-1">
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
                 <div className={cn("flex items-center gap-0.5", trendColor)}>
                   <TrendIcon className="h-3.5 w-3.5" />
                   {change !== undefined && (
-                    <span className="text-xs font-medium">
+                    <span className="text-[10px] font-medium sm:text-xs">
                       {change > 0 ? "+" : ""}{change}%
                     </span>
                   )}
                 </div>
                 {changeLabel && (
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-[10px] text-muted-foreground sm:text-xs">
                     {changeLabel}
                   </span>
                 )}
