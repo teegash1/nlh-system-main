@@ -133,7 +133,6 @@ export default async function DashboardPage() {
     const { data: receiptsData, error: receiptsError } = await supabase
       .from("receipts")
       .select("amount, receipt_date, status")
-      .eq("user_id", userId)
       .gte("receipt_date", format(chartStart, "yyyy-MM-dd"))
       .lte("receipt_date", format(chartEnd, "yyyy-MM-dd"))
 
@@ -349,7 +348,6 @@ export default async function DashboardPage() {
     ? await supabase
         .from("receipts")
         .select("id", { count: "exact", head: true })
-        .eq("user_id", userId)
         .eq("status", "Pending")
     : { count: 0 }
 
@@ -378,7 +376,6 @@ export default async function DashboardPage() {
     ? await supabase
         .from("receipts")
         .select("id, vendor, amount, created_at")
-        .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(3)
     : { data: [] }
