@@ -154,7 +154,7 @@ const faqs = [
       "Low stock appears when the latest numeric count is at or below the reorder threshold.",
   },
   {
-    question: "Can I export reports for leadership?",
+    question: "Can I export reports for sharing?",
     answer:
       "Yes. Reports can be exported as premium PDF or CSV from the Reports page.",
   },
@@ -334,8 +334,8 @@ export function HelpCenter() {
               </div>
               <div>
                 <p className="text-sm font-medium text-foreground">Email Support</p>
-                <a className="text-xs text-muted-foreground hover:text-foreground" href="mailto:support@nobles.org">
-                  support@nobles.org
+                <a className="text-xs text-muted-foreground hover:text-foreground" href="mailto:nategadgets@gmail.com">
+                  nategadgets@gmail.com
                 </a>
               </div>
             </div>
@@ -345,8 +345,8 @@ export function HelpCenter() {
               </div>
               <div>
                 <p className="text-sm font-medium text-foreground">Phone Support</p>
-                <a className="text-xs text-muted-foreground hover:text-foreground" href="tel:+254700000000">
-                  +254 700 000 000
+                <a className="text-xs text-muted-foreground hover:text-foreground" href="tel:+254707694388">
+                  254707694388
                 </a>
               </div>
             </div>
@@ -355,7 +355,7 @@ export function HelpCenter() {
               variant="outline"
               className="w-full border-border text-muted-foreground hover:text-foreground hover:bg-accent premium-btn bg-transparent"
             >
-              <Link href="mailto:support@nobles.org">
+              <Link href="https://wa.me/254707694388">
                 <MessageCircle className="mr-2 h-4 w-4" />
                 Start Live Chat
               </Link>

@@ -119,7 +119,7 @@ export function Header({ title, subtitle }: HeaderProps) {
                 />
               </svg>
             </div>
-            <span className="text-sm font-semibold text-foreground">Nobles</span>
+            <span className="text-sm font-semibold text-foreground">NLH-SYSTEM</span>
           </div>
 
           {/* Search Bar */}
