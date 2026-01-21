@@ -1,12 +1,26 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { FileText, ImageDown, ShoppingCart } from "lucide-react"
+import { FileText, ImageDown, ShoppingCart, X } from "lucide-react"
 import { toPng } from "html-to-image"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 
@@ -17,6 +31,7 @@ type ShoppingListItem = {
   threshold: number
   unit: string
   category: string
+  source?: "low" | "manual"
 }
 
 type ShoppingListOverride = {
@@ -56,24 +71,41 @@ const escapeHtml = (value: string) =>
 export function ShoppingList({
   items,
   overrides,
+  catalogItems,
 }: {
   items: ShoppingListItem[]
   overrides: ShoppingListOverride[]
+  catalogItems: ShoppingListItem[]
 }) {
   const captureRef = useRef<HTMLDivElement | null>(null)
   const [drafts, setDrafts] = useState<Record<string, DraftRow>>({})
+  const [listItems, setListItems] = useState<ShoppingListItem[]>(items)
+  const [localOverrides, setLocalOverrides] =
+    useState<ShoppingListOverride[]>(overrides)
+  const [selectedItemId, setSelectedItemId] = useState<string>("")
+  const [activeListId, setActiveListId] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isMarkingDone, setIsMarkingDone] = useState(false)
+  const [statusMessage, setStatusMessage] = useState<string | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmText, setConfirmText] = useState("")
   const supabase = useMemo(() => createClient(), [])
+
+  useEffect(() => {
+    setListItems(items)
+    setLocalOverrides(overrides)
+  }, [items, overrides])
 
   const overrideMap = useMemo(() => {
     const map = new Map<string, ShoppingListOverride>()
-    overrides.forEach((row) => map.set(row.item_id, row))
+    localOverrides.forEach((row) => map.set(row.item_id, row))
     return map
-  }, [overrides])
+  }, [localOverrides])
 
   useEffect(() => {
     setDrafts((prev) => {
       const next: Record<string, DraftRow> = {}
-      items.forEach((item) => {
+      listItems.forEach((item) => {
         const existing = prev[item.id]
         if (existing) {
           next[item.id] = existing
@@ -94,10 +126,10 @@ export function ShoppingList({
       })
       return next
     })
-  }, [items, overrideMap])
+  }, [listItems, overrideMap])
 
   const sortedItems = useMemo(() => {
-    return [...items].sort((a, b) => {
+    return [...listItems].sort((a, b) => {
       const aOut = a.current <= 0
       const bOut = b.current <= 0
       if (aOut !== bOut) return aOut ? -1 : 1
@@ -106,7 +138,7 @@ export function ShoppingList({
       if (ratioA !== ratioB) return ratioA - ratioB
       return a.name.localeCompare(b.name)
     })
-  }, [items])
+  }, [listItems])
 
   const rows = useMemo(() => {
     return sortedItems.map((item) => {
@@ -123,9 +155,22 @@ export function ShoppingList({
       const priceValue =
         parseNumber(draft?.price ?? "") ?? override?.unit_price ?? 0
       const amount = qtyValue * priceValue
+      const isManual = item.source === "manual"
+      const isLow =
+        item.current <= 0 ||
+        (item.threshold > 0 && item.current <= item.threshold)
       return {
         ...item,
-        status: item.current <= 0 ? "Out of stock" : "Low stock",
+        status: !isManual
+          ? item.current <= 0
+            ? "Out of stock"
+            : "Low stock"
+          : isLow
+            ? item.current <= 0
+              ? "Out of stock"
+              : "Low stock"
+            : "Manual",
+        isManual,
         qtyValue,
         priceValue,
         amount,
@@ -137,6 +182,11 @@ export function ShoppingList({
     () => rows.reduce((sum, row) => sum + (Number(row.amount) || 0), 0),
     [rows]
   )
+
+  const availableItems = useMemo(() => {
+    const existingIds = new Set(listItems.map((item) => item.id))
+    return catalogItems.filter((item) => !existingIds.has(item.id))
+  }, [catalogItems, listItems])
 
   const handleFieldChange = (
     itemId: string,
@@ -151,6 +201,204 @@ export function ShoppingList({
         [field]: value,
       },
     }))
+  }
+
+  const handleAddItem = async () => {
+    if (!selectedItemId) return
+    const item = catalogItems.find((entry) => entry.id === selectedItemId)
+    if (!item) return
+
+    const suggestedQty = Math.max(
+      1,
+      item.threshold > 0 ? item.threshold - item.current : 1
+    )
+
+    const { data, error } = await supabase
+      .from("shopping_list_items")
+      .upsert(
+        {
+          item_id: item.id,
+          desired_qty: suggestedQty,
+          unit_price: null,
+        },
+        { onConflict: "item_id" }
+      )
+      .select("item_id, desired_qty, unit_price")
+      .maybeSingle()
+
+    if (error) return
+
+    setLocalOverrides((prev) => {
+      const next = prev.filter((row) => row.item_id !== item.id)
+      if (data) {
+        next.push({
+          item_id: data.item_id,
+          desired_qty: data.desired_qty,
+          unit_price: data.unit_price,
+        })
+      }
+      return next
+    })
+
+    setListItems((prev) => [...prev, { ...item, source: "manual" }])
+    setDrafts((prev) => ({
+      ...prev,
+      [item.id]: {
+        qty: String(suggestedQty),
+        price: "",
+      },
+    }))
+    setSelectedItemId("")
+  }
+
+  const handleRemoveItem = async (itemId: string) => {
+    await supabase.from("shopping_list_items").delete().eq("item_id", itemId)
+    setLocalOverrides((prev) => prev.filter((row) => row.item_id !== itemId))
+    setListItems((prev) => prev.filter((item) => item.id !== itemId))
+    setDrafts((prev) => {
+      const next = { ...prev }
+      delete next[itemId]
+      return next
+    })
+  }
+
+  const fetchActiveListId = async () => {
+    const { data } = await supabase
+      .from("shopping_lists")
+      .select("id")
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    return data?.id ?? null
+  }
+
+  const ensureActiveListId = async () => {
+    const { data: userData } = await supabase.auth.getUser()
+    const userId = userData.user?.id ?? null
+    let listId = activeListId ?? (await fetchActiveListId())
+
+    if (!listId) {
+      const title = `Shopping List • ${new Date().toLocaleDateString("en-KE", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })}`
+      const { data: created, error } = await supabase
+        .from("shopping_lists")
+        .insert({
+          title,
+          status: "active",
+          created_by: userId,
+        })
+        .select("id")
+        .single()
+      if (error) return null
+      listId = created?.id ?? null
+    }
+
+    return listId
+  }
+
+  const handleSaveList = async () => {
+    if (isSaving) return
+    setIsSaving(true)
+    setStatusMessage(null)
+
+    const listId = await ensureActiveListId()
+
+    if (!listId) {
+      setIsSaving(false)
+      return
+    }
+
+    await supabase.from("shopping_list_entries").delete().eq("list_id", listId)
+    const entries = rows.map((row) => ({
+      list_id: listId,
+      item_id: row.id,
+      item_name: row.name,
+      category: row.category,
+      unit: row.unit,
+      current_qty: row.current,
+      desired_qty: row.qtyValue ?? 0,
+      unit_price: row.priceValue ?? null,
+      status: row.status,
+    }))
+
+    if (entries.length > 0) {
+      await supabase.from("shopping_list_entries").insert(entries)
+    }
+
+    setActiveListId(listId)
+    setStatusMessage("Shopping list saved.")
+    setIsSaving(false)
+  }
+
+  const handleMarkDone = async () => {
+    if (isMarkingDone) return
+    setIsMarkingDone(true)
+    setStatusMessage(null)
+
+    const listId = await ensureActiveListId()
+    if (listId) {
+      await supabase.from("shopping_list_entries").delete().eq("list_id", listId)
+      const entries = rows.map((row) => ({
+        list_id: listId,
+        item_id: row.id,
+        item_name: row.name,
+        category: row.category,
+        unit: row.unit,
+        current_qty: row.current,
+        desired_qty: row.qtyValue ?? 0,
+        unit_price: row.priceValue ?? null,
+        status: row.status,
+      }))
+      if (entries.length > 0) {
+        await supabase.from("shopping_list_entries").insert(entries)
+      }
+
+      await supabase
+        .from("shopping_lists")
+        .update({
+          status: "done",
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", listId)
+    }
+
+    const { data: userData } = await supabase.auth.getUser()
+    const userId = userData.user?.id ?? null
+    const countDate = new Date().toISOString().slice(0, 10)
+    const stockRows = rows
+      .filter((row) => Number(row.qtyValue) > 0)
+      .map((row) => {
+        const newQty = Number(row.current) + Number(row.qtyValue ?? 0)
+        const unitLabel = row.unit ?? ""
+        return {
+          item_id: row.id,
+          count_date: countDate,
+          raw_value: unitLabel ? `${newQty} ${unitLabel}` : String(newQty),
+          qty_numeric: newQty,
+          qty_unit: unitLabel || null,
+          source: "shopping_list",
+          created_by: userId,
+        }
+      })
+
+    if (stockRows.length > 0) {
+      await supabase
+        .from("stock_counts")
+        .upsert(stockRows, { onConflict: "item_id,count_date" })
+    }
+
+    await supabase.from("shopping_list_items").delete().gte("desired_qty", 0)
+
+    setLocalOverrides([])
+    setDrafts({})
+    setListItems((prev) => prev.filter((item) => item.source !== "manual"))
+    setActiveListId(null)
+    setStatusMessage("Marked as done. Shopping list cleared.")
+    setIsMarkingDone(false)
   }
 
   const handleSaveRow = async (itemId: string) => {
@@ -169,6 +417,16 @@ export function ShoppingList({
         },
         { onConflict: "item_id" }
       )
+
+    setLocalOverrides((prev) => {
+      const next = prev.filter((row) => row.item_id !== itemId)
+      next.push({
+        item_id: itemId,
+        desired_qty: desiredQty,
+        unit_price: unitPrice ?? null,
+      })
+      return next
+    })
 
     setDrafts((prev) => ({
       ...prev,
@@ -294,7 +552,7 @@ export function ShoppingList({
   }
 
   return (
-    <Card className="bg-card border-border">
+    <Card id="shopping-list" className="bg-card border-border">
       <CardHeader className="pb-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
@@ -310,7 +568,28 @@ export function ShoppingList({
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 sm:justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSaveList}
+              disabled={isSaving}
+              className="h-8 border-border px-3 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent"
+            >
+              {isSaving ? "Saving..." : "Save List"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setConfirmText("")
+                setConfirmOpen(true)
+              }}
+              disabled={isMarkingDone}
+              className="h-8 border-border px-3 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent"
+            >
+              {isMarkingDone ? "Closing..." : "Mark Done"}
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -331,9 +610,42 @@ export function ShoppingList({
             </Button>
           </div>
         </div>
+        {statusMessage && (
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            {statusMessage}
+          </p>
+        )}
       </CardHeader>
       <CardContent className="pt-0">
-        <div ref={captureRef} className="rounded-xl border border-border/60 bg-secondary/10 p-4">
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Select value={selectedItemId} onValueChange={setSelectedItemId}>
+            <SelectTrigger className="w-full sm:w-[320px] bg-background/80 border-border text-foreground">
+              <SelectValue placeholder="Add item to shopping list" />
+            </SelectTrigger>
+            <SelectContent className="bg-card border-border">
+              {availableItems.length === 0 ? (
+                <SelectItem value="__none" disabled>
+                  All items already listed
+                </SelectItem>
+              ) : (
+                availableItems.map((item) => (
+                  <SelectItem key={item.id} value={item.id}>
+                    {item.name}
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+          <Button
+            onClick={handleAddItem}
+            disabled={!selectedItemId}
+            className="h-8 px-3 text-[11px] premium-btn"
+          >
+            Add Item
+          </Button>
+        </div>
+
+        <div ref={captureRef} className="mt-4 rounded-xl border border-border/60 bg-secondary/10 p-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-foreground">Purchase Overview</p>
@@ -375,9 +687,11 @@ export function ShoppingList({
                     <span
                       className={cn(
                         "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                        row.current <= 0
-                          ? "bg-chart-4/15 text-chart-4"
-                          : "bg-chart-3/15 text-chart-3"
+                        row.status === "Manual"
+                          ? "bg-chart-2/15 text-chart-2"
+                          : row.current <= 0
+                            ? "bg-chart-4/15 text-chart-4"
+                            : "bg-chart-3/15 text-chart-3"
                       )}
                     >
                       {row.status}
@@ -405,9 +719,21 @@ export function ShoppingList({
                       type="number"
                       min="0"
                     />
-                    <span className="text-right font-semibold text-foreground">
-                      {currency.format(row.amount)}
-                    </span>
+                    <div className="flex items-center justify-end gap-2">
+                      {row.isManual && (
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          onClick={() => handleRemoveItem(row.id)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      )}
+                      <span className="text-right font-semibold text-foreground">
+                        {currency.format(row.amount)}
+                      </span>
+                    </div>
                   </div>
                 ))
               )}
@@ -433,9 +759,11 @@ export function ShoppingList({
                     <span
                       className={cn(
                         "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                        row.current <= 0
-                          ? "bg-chart-4/15 text-chart-4"
-                          : "bg-chart-3/15 text-chart-3"
+                        row.status === "Manual"
+                          ? "bg-chart-2/15 text-chart-2"
+                          : row.current <= 0
+                            ? "bg-chart-4/15 text-chart-4"
+                            : "bg-chart-3/15 text-chart-3"
                       )}
                     >
                       {row.status}
@@ -469,12 +797,70 @@ export function ShoppingList({
                       min="0"
                     />
                   </div>
+                  {row.isManual && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2 w-full text-[11px] text-muted-foreground hover:text-foreground"
+                      onClick={() => handleRemoveItem(row.id)}
+                    >
+                      <X className="mr-2 h-3 w-3" />
+                      Remove from list
+                    </Button>
+                  )}
                 </div>
               ))
             )}
           </div>
         </div>
       </CardContent>
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold text-foreground">
+              Confirm shopping completion
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm text-muted-foreground">
+            <p>
+              This will mark the shopping list as done and update stock counts
+              with the purchased quantities.
+            </p>
+            <div>
+              <p className="text-xs font-medium text-foreground">
+                Type <span className="text-foreground">done</span> to confirm
+              </p>
+              <Input
+                value={confirmText}
+                onChange={(event) => setConfirmText(event.target.value)}
+                className="mt-2 border-border bg-secondary/40 text-sm"
+                placeholder="done"
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmOpen(false)}
+              className="border-border text-muted-foreground hover:text-foreground"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (confirmText.trim().toLowerCase() !== "done") return
+                setConfirmOpen(false)
+                await handleMarkDone()
+              }}
+              disabled={confirmText.trim().toLowerCase() !== "done" || isMarkingDone}
+              className="premium-btn"
+            >
+              Confirm & Update Stock
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }

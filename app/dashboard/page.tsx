@@ -229,6 +229,28 @@ export default async function DashboardPage() {
     latestCounts = countRows ?? []
   }
 
+  const latestCountMap = new Map<
+    string,
+    {
+      current: number | null
+      threshold: number | null
+      unit: string
+      category: string
+      name: string
+    }
+  >()
+
+  latestCounts.forEach((row) => {
+    const current = parseCountValue(row.qty_numeric, row.raw_value)
+    latestCountMap.set(row.item_id, {
+      current,
+      threshold: row.item?.reorder_level ?? null,
+      unit: row.item?.unit ?? "pcs",
+      category: row.item?.category?.name ?? "Uncategorized",
+      name: row.item?.name ?? "Unknown item",
+    })
+  })
+
   const countItemIds = new Set(latestCounts.map((row) => row.item_id))
   const missingCounts = items.filter((item: any) => !countItemIds.has(item.id))
 
@@ -245,6 +267,7 @@ export default async function DashboardPage() {
           threshold: Number(threshold ?? 0),
           unit: row.item?.unit ?? "pcs",
           category: row.item?.category?.name ?? "Uncategorized",
+          source: "low" as const,
         }
       }
       return null
@@ -256,21 +279,61 @@ export default async function DashboardPage() {
     threshold: number
     unit: string
     category: string
+    source: "low"
   }>
   const outOfStockCount = lowStockItems.filter((item) => item.current <= 0).length
 
-  if (lowStockItems.length > 0) {
-    const { data: shoppingRows, error: shoppingError } = await supabase
-      .from("shopping_list_items")
-      .select("item_id, desired_qty, unit_price, notes")
-      .in(
-        "item_id",
-        lowStockItems.map((item) => item.id)
-      )
+  const { data: shoppingRows, error: shoppingError } = await supabase
+    .from("shopping_list_items")
+    .select("item_id, desired_qty, unit_price, notes")
 
-    if (shoppingError) throw new Error(shoppingError.message)
-    shoppingOverrides = (shoppingRows ?? []) as ShoppingListOverride[]
-  }
+  if (shoppingError) throw new Error(shoppingError.message)
+  shoppingOverrides = (shoppingRows ?? []) as ShoppingListOverride[]
+
+  const inventoryById = new Map(items.map((item: any) => [item.id, item]))
+  const lowStockIds = new Set(lowStockItems.map((item) => item.id))
+  const manualItems = Array.from(
+    new Set(
+      shoppingOverrides
+        .map((row) => row.item_id)
+        .filter((id) => !lowStockIds.has(id))
+    )
+  )
+    .map((id) => {
+      const inventory = inventoryById.get(id)
+      const latest = latestCountMap.get(id)
+      const name = inventory?.name ?? latest?.name ?? "Unknown item"
+      const unit = latest?.unit ?? inventory?.unit ?? "pcs"
+      const category =
+        latest?.category ?? inventory?.category?.name ?? "Uncategorized"
+      const threshold = Number(latest?.threshold ?? inventory?.reorder_level ?? 0)
+      const current = latest?.current ?? 0
+      return {
+        id,
+        name,
+        current,
+        threshold,
+        unit,
+        category,
+        source: "manual" as const,
+      }
+    })
+    .filter((item) => item.name)
+
+  const shoppingListItems = [...lowStockItems, ...manualItems]
+
+  const catalogItems = items.map((item: any) => {
+    const latest = latestCountMap.get(item.id)
+    const threshold = Number(item.reorder_level ?? latest?.threshold ?? 0)
+    return {
+      id: item.id,
+      name: item.name,
+      current: latest?.current ?? 0,
+      threshold,
+      unit: item.unit ?? latest?.unit ?? "pcs",
+      category: item.category?.name ?? latest?.category ?? "Uncategorized",
+    }
+  })
 
   const { count: pendingReceiptsCount } = userId
     ? await supabase
@@ -519,7 +582,11 @@ export default async function DashboardPage() {
                 completionRate={completionRate}
               />
             </div>
-            <ShoppingList items={lowStockItems} overrides={shoppingOverrides} />
+            <ShoppingList
+              items={shoppingListItems}
+              overrides={shoppingOverrides}
+              catalogItems={catalogItems}
+            />
           </div>
 
           {/* Right Column - Sidebar Content */}

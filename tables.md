@@ -404,6 +404,94 @@ before update on public.shopping_list_items
 for each row execute function public.set_updated_at_shopping_list_items();
 
 
+-- Shopping list history (saved lists)
+create table public.shopping_lists (
+  id uuid not null default gen_random_uuid (),
+  title text not null,
+  status text not null default 'active'::text,
+  created_by uuid null references auth.users (id) on delete set null,
+  created_at timestamp with time zone not null default now(),
+  completed_at timestamp with time zone null,
+  constraint shopping_lists_pkey primary key (id),
+  constraint shopping_lists_status_check check (status in ('active', 'done'))
+) TABLESPACE pg_default;
+
+create index if not exists idx_shopping_lists_status on public.shopping_lists using btree (status, created_at) TABLESPACE pg_default;
+
+alter table public.shopping_lists enable row level security;
+
+create policy "Shopping lists readable by authenticated"
+on public.shopping_lists
+for select
+to authenticated
+using (true);
+
+create policy "Shopping lists insertable by authenticated"
+on public.shopping_lists
+for insert
+to authenticated
+with check (true);
+
+create policy "Shopping lists updateable by authenticated"
+on public.shopping_lists
+for update
+to authenticated
+using (true)
+with check (true);
+
+create policy "Shopping lists deleteable by authenticated"
+on public.shopping_lists
+for delete
+to authenticated
+using (true);
+
+
+create table public.shopping_list_entries (
+  id uuid not null default gen_random_uuid (),
+  list_id uuid not null references public.shopping_lists (id) on delete cascade,
+  item_id uuid not null references public.inventory_items (id) on delete cascade,
+  item_name text not null,
+  category text not null,
+  unit text not null,
+  current_qty numeric not null default 0,
+  desired_qty numeric not null default 0,
+  unit_price numeric null,
+  status text not null default 'Low stock'::text,
+  created_at timestamp with time zone not null default now(),
+  constraint shopping_list_entries_pkey primary key (id)
+) TABLESPACE pg_default;
+
+create index if not exists idx_shopping_list_entries_list on public.shopping_list_entries using btree (list_id) TABLESPACE pg_default;
+create index if not exists idx_shopping_list_entries_item on public.shopping_list_entries using btree (item_id) TABLESPACE pg_default;
+
+alter table public.shopping_list_entries enable row level security;
+
+create policy "Shopping list entries readable by authenticated"
+on public.shopping_list_entries
+for select
+to authenticated
+using (true);
+
+create policy "Shopping list entries insertable by authenticated"
+on public.shopping_list_entries
+for insert
+to authenticated
+with check (true);
+
+create policy "Shopping list entries updateable by authenticated"
+on public.shopping_list_entries
+for update
+to authenticated
+using (true)
+with check (true);
+
+create policy "Shopping list entries deleteable by authenticated"
+on public.shopping_list_entries
+for delete
+to authenticated
+using (true);
+
+
 -- Notification read state
 create table public.notification_reads (
   id uuid not null default gen_random_uuid (),

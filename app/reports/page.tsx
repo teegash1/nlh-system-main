@@ -8,6 +8,7 @@ import { ReceiptStatusSelect } from "@/components/reports/receipt-status-select"
 import { ReceiptsExportButton } from "@/components/reports/receipts-export-button"
 import { CategoryManagerDialog } from "@/components/stock/category-manager-dialog"
 import { ReportExportMenu } from "@/components/reports/report-export-menu"
+import { ShoppingListHistoryTable } from "@/components/reports/shopping-list-history"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import Link from "next/link"
@@ -125,6 +126,23 @@ export default async function ReportsPage() {
   let receipts: ReceiptEntry[] = []
   let receiptCategories: string[] = []
   let categoryOptions: { id: string; name: string }[] = []
+  let shoppingLists: Array<{
+    id: string
+    title: string
+    status: string
+    created_at: string
+    completed_at: string | null
+  }> = []
+  let shoppingEntries: Array<{
+    list_id: string
+    item_name: string
+    category: string
+    unit: string
+    current_qty: number
+    desired_qty: number
+    unit_price: number | null
+    status: string
+  }> = []
   let adminClient: ReturnType<typeof createAdminClient> | null = null
 
   const { data: categoriesData, error: categoriesError } = await supabase
@@ -213,6 +231,45 @@ export default async function ReportsPage() {
         createdAt: row.created_at,
       }
     })
+
+    const { data: listData, error: listError } = await supabase
+      .from("shopping_lists")
+      .select("id, title, status, created_at, completed_at")
+      .order("created_at", { ascending: false })
+
+    if (listError) {
+      throw new Error(listError.message)
+    }
+
+    shoppingLists = listData ?? []
+
+    if (shoppingLists.length > 0) {
+      const { data: entryData, error: entryError } = await supabase
+        .from("shopping_list_entries")
+        .select(
+          "list_id, item_name, category, unit, current_qty, desired_qty, unit_price, status"
+        )
+        .in(
+          "list_id",
+          shoppingLists.map((list) => list.id)
+        )
+
+      if (entryError) {
+        throw new Error(entryError.message)
+      }
+
+      shoppingEntries =
+        (entryData ?? []).map((row) => ({
+          list_id: row.list_id,
+          item_name: row.item_name,
+          category: row.category,
+          unit: row.unit,
+          current_qty: Number(row.current_qty ?? 0),
+          desired_qty: Number(row.desired_qty ?? 0),
+          unit_price: row.unit_price != null ? Number(row.unit_price) : null,
+          status: row.status ?? "Low stock",
+        })) ?? []
+    }
   }
 
   const receiptsChronological = [...receipts].sort((a, b) => {
@@ -576,6 +633,11 @@ export default async function ReportsPage() {
             </div>
           </CardContent>
         </Card>
+
+        <ShoppingListHistoryTable
+          lists={shoppingLists}
+          entries={shoppingEntries}
+        />
       </div>
     </AppShell>
   )
