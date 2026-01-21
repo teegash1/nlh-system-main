@@ -353,6 +353,7 @@ create table public.shopping_list_items (
   desired_qty numeric not null default 0,
   unit_price numeric null,
   notes text null,
+  excluded boolean not null default false,
   created_at timestamp with time zone not null default now(),
   updated_at timestamp with time zone not null default now(),
   constraint shopping_list_items_pkey primary key (id),
@@ -360,6 +361,9 @@ create table public.shopping_list_items (
   constraint shopping_list_items_item_fkey foreign key (item_id)
     references public.inventory_items (id) on delete cascade
 ) TABLESPACE pg_default;
+
+alter table public.shopping_list_items
+  add column if not exists excluded boolean not null default false;
 
 create index if not exists idx_shopping_list_items_item on public.shopping_list_items using btree (item_id) TABLESPACE pg_default;
 

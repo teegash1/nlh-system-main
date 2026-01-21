@@ -54,6 +54,7 @@ type ShoppingListOverride = {
   desired_qty: number | null
   unit_price: number | null
   notes?: string | null
+  excluded?: boolean | null
 }
 
 const colorClassMap: Record<string, string> = {
@@ -285,13 +286,18 @@ export default async function DashboardPage() {
 
   const { data: shoppingRows, error: shoppingError } = await supabase
     .from("shopping_list_items")
-    .select("item_id, desired_qty, unit_price, notes")
+    .select("item_id, desired_qty, unit_price, notes, excluded")
 
   if (shoppingError) throw new Error(shoppingError.message)
   shoppingOverrides = (shoppingRows ?? []) as ShoppingListOverride[]
 
   const inventoryById = new Map(items.map((item: any) => [item.id, item]))
   const lowStockIds = new Set(lowStockItems.map((item) => item.id))
+  const excludedIds = new Set(
+    shoppingOverrides
+      .filter((row) => row.excluded)
+      .map((row) => row.item_id)
+  )
   const manualItems = Array.from(
     new Set(
       shoppingOverrides
@@ -299,6 +305,7 @@ export default async function DashboardPage() {
         .filter((id) => !lowStockIds.has(id))
     )
   )
+    .filter((id) => !excludedIds.has(id))
     .map((id) => {
       const inventory = inventoryById.get(id)
       const latest = latestCountMap.get(id)
@@ -320,7 +327,10 @@ export default async function DashboardPage() {
     })
     .filter((item) => item.name)
 
-  const shoppingListItems = [...lowStockItems, ...manualItems]
+  const shoppingListItems = [
+    ...lowStockItems.filter((item) => !excludedIds.has(item.id)),
+    ...manualItems,
+  ]
 
   const catalogItems = items.map((item: any) => {
     const latest = latestCountMap.get(item.id)

@@ -42,6 +42,7 @@ export async function POST(request: Request) {
       item_id: entry.item_id,
       desired_qty: Number(entry.desired_qty ?? 0),
       unit_price: entry.unit_price ?? null,
+      excluded: false,
     }))
     const { error: insertError } = await supabase
       .from("shopping_list_items")

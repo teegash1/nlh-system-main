@@ -39,6 +39,7 @@ type ShoppingListOverride = {
   desired_qty: number | null
   unit_price: number | null
   notes?: string | null
+  excluded?: boolean | null
 }
 
 type DraftRow = {
@@ -220,6 +221,7 @@ export function ShoppingList({
           item_id: item.id,
           desired_qty: suggestedQty,
           unit_price: null,
+          excluded: false,
         },
         { onConflict: "item_id" }
       )
@@ -252,8 +254,32 @@ export function ShoppingList({
   }
 
   const handleRemoveItem = async (itemId: string) => {
-    await supabase.from("shopping_list_items").delete().eq("item_id", itemId)
-    setLocalOverrides((prev) => prev.filter((row) => row.item_id !== itemId))
+    const { data } = await supabase
+      .from("shopping_list_items")
+      .upsert(
+        {
+          item_id: itemId,
+          desired_qty: 0,
+          unit_price: null,
+          excluded: true,
+        },
+        { onConflict: "item_id" }
+      )
+      .select("item_id, desired_qty, unit_price, excluded")
+      .maybeSingle()
+
+    setLocalOverrides((prev) => {
+      const next = prev.filter((row) => row.item_id !== itemId)
+      if (data) {
+        next.push({
+          item_id: data.item_id,
+          desired_qty: data.desired_qty,
+          unit_price: data.unit_price,
+          excluded: data.excluded,
+        })
+      }
+      return next
+    })
     setListItems((prev) => prev.filter((item) => item.id !== itemId))
     setDrafts((prev) => {
       const next = { ...prev }
@@ -414,6 +440,7 @@ export function ShoppingList({
           item_id: itemId,
           desired_qty: desiredQty,
           unit_price: unitPrice ?? null,
+          excluded: false,
         },
         { onConflict: "item_id" }
       )
@@ -424,6 +451,7 @@ export function ShoppingList({
         item_id: itemId,
         desired_qty: desiredQty,
         unit_price: unitPrice ?? null,
+        excluded: false,
       })
       return next
     })
@@ -541,10 +569,30 @@ export function ShoppingList({
 
   const handleExportImage = async () => {
     if (!captureRef.current) return
-    const dataUrl = await toPng(captureRef.current, {
+    const source = captureRef.current
+    const clone = source.cloneNode(true) as HTMLElement
+    const { width } = source.getBoundingClientRect()
+    clone.style.position = "fixed"
+    clone.style.left = "-9999px"
+    clone.style.top = "0"
+    clone.style.width = `${width}px`
+    clone.style.maxHeight = "none"
+    clone.style.overflow = "visible"
+    clone
+      .querySelectorAll<HTMLElement>("[data-export-scroll]")
+      .forEach((el) => {
+        el.style.maxHeight = "none"
+        el.style.overflow = "visible"
+      })
+    document.body.appendChild(clone)
+
+    const dataUrl = await toPng(clone, {
       pixelRatio: 2,
       backgroundColor: "#0a0a0b",
+      width: clone.scrollWidth,
+      height: clone.scrollHeight,
     })
+    document.body.removeChild(clone)
     const link = document.createElement("a")
     link.download = `shopping-list-${new Date().toISOString().slice(0, 10)}.png`
     link.href = dataUrl
@@ -668,7 +716,10 @@ export function ShoppingList({
               <span>Price</span>
               <span className="text-right">Amount</span>
             </div>
-            <div className="max-h-[360px] divide-y divide-border/60 overflow-y-auto bg-background/40">
+            <div
+              data-export-scroll
+              className="max-h-[360px] divide-y divide-border/60 overflow-y-auto bg-background/40"
+            >
               {rows.length === 0 ? (
                 <div className="px-4 py-6 text-xs text-muted-foreground">
                   No low stock items right now.
@@ -720,16 +771,14 @@ export function ShoppingList({
                       min="0"
                     />
                     <div className="flex items-center justify-end gap-2">
-                      {row.isManual && (
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                          onClick={() => handleRemoveItem(row.id)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                        onClick={() => handleRemoveItem(row.id)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
                       <span className="text-right font-semibold text-foreground">
                         {currency.format(row.amount)}
                       </span>
@@ -797,17 +846,15 @@ export function ShoppingList({
                       min="0"
                     />
                   </div>
-                  {row.isManual && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="mt-2 w-full text-[11px] text-muted-foreground hover:text-foreground"
-                      onClick={() => handleRemoveItem(row.id)}
-                    >
-                      <X className="mr-2 h-3 w-3" />
-                      Remove from list
-                    </Button>
-                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2 w-full text-[11px] text-muted-foreground hover:text-foreground"
+                    onClick={() => handleRemoveItem(row.id)}
+                  >
+                    <X className="mr-2 h-3 w-3" />
+                    Remove from list
+                  </Button>
                 </div>
               ))
             )}
