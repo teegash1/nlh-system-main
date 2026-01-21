@@ -68,8 +68,21 @@ const differenceInCalendarWeeksUtc = (
 const isAfterUtc = (left: Date, right: Date) =>
   left.getTime() > right.getTime()
 
+const endOfDayUtc = (date: Date) =>
+  new Date(
+    Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate(),
+      23,
+      59,
+      59,
+      999
+    )
+  )
+
 const endOfWeekUtc = (date: Date, weekStartsOn = 1) =>
-  addDaysUtc(startOfWeekUtc(date, weekStartsOn), 6)
+  endOfDayUtc(addDaysUtc(startOfWeekUtc(date, weekStartsOn), 6))
 
 const isSameDayUtc = (left: Date, right: Date) =>
   toUtcDateKey(left) === toUtcDateKey(right)
@@ -176,7 +189,6 @@ export function CalendarWidget({
       const { data } = await supabase
         .from("reminders")
         .select("id, title, start_at, recurrence, color")
-        .eq("user_id", userData.user.id)
         .order("start_at", { ascending: true })
 
       if (!isActive || !data) return

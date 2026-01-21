@@ -185,7 +185,6 @@ export function useNotifications() {
       const { data: reminders } = await supabase
         .from("reminders")
         .select("id, title, start_at, recurrence, color")
-        .eq("user_id", user.id)
         .order("start_at", { ascending: true })
 
       const reminderNotifications = (reminders ?? [])

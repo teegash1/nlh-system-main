@@ -18,15 +18,6 @@ export const metadata: Metadata = {
   generator: 'v0.app',
   keywords: ['inventory', 'stock management', 'church', 'monitoring', 'nobles lighthouse'],
   authors: [{ name: 'Nobles Lighthouse' }],
-  icons: {
-    icon: [
-      {
-        url: '/marketing_13593461.png',
-        type: 'image/png',
-      },
-    ],
-    apple: '/marketing_13593461.png',
-  },
 }
 
 export const viewport: Viewport = {

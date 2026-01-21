@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect } from "react"
+import React from "react"
 
 import { Sidebar } from "./sidebar"
 import { MobileNav } from "./mobile-nav"
@@ -13,10 +13,6 @@ interface AppShellProps {
 }
 
 export function AppShell({ children, title, subtitle }: AppShellProps) {
-  useEffect(() => {
-    console.log("[v0] AppShell mounted with title:", title)
-  }, [title])
-  
   return (
     <div className="flex min-h-screen bg-background">
       {/* Desktop Sidebar */}

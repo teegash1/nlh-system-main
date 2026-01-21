@@ -356,17 +356,20 @@ export default async function DashboardPage() {
 
   if (userId) {
     let reminderClient = supabase
+    let useAdminClient = false
     try {
       reminderClient = createAdminClient()
+      useAdminClient = true
     } catch {
       reminderClient = supabase
     }
 
-    const { data: reminderRows, error: reminderError } = await reminderClient
+    const remindersQuery = reminderClient
       .from("reminders")
       .select("id, title, notes, start_at, recurrence, color")
-      .eq("user_id", userId)
       .order("start_at", { ascending: true })
+
+    const { data: reminderRows, error: reminderError } = await remindersQuery
 
     if (reminderError) throw new Error(reminderError.message)
     reminders = (reminderRows ?? []) as ReminderRow[]

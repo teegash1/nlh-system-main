@@ -319,11 +319,12 @@ create index IF not exists idx_reminders_user_date on public.reminders using btr
 
 alter table public.reminders enable row level security;
 
-create policy "Reminders are readable by owner"
+drop policy if exists "Reminders are readable by owner" on public.reminders;
+create policy "Reminders are readable by authenticated"
 on public.reminders
 for select
 to authenticated
-using (auth.uid() = user_id);
+using (true);
 
 create policy "Reminders are insertable by owner"
 on public.reminders
