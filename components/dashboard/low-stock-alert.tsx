@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -49,7 +50,14 @@ const lowStockItems: LowStockItem[] = [
   },
 ]
 
-export function LowStockAlert() {
+interface LowStockAlertProps {
+  items?: LowStockItem[]
+  viewLink?: string
+}
+
+export function LowStockAlert({ items, viewLink = "/stock" }: LowStockAlertProps) {
+  const displayItems = items ?? lowStockItems
+
   return (
     <Card className="bg-card border-border border-l-4 border-l-chart-3">
       <CardHeader className="pb-3">
@@ -57,36 +65,41 @@ export function LowStockAlert() {
           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-chart-3/20">
             <AlertTriangle className="h-4 w-4 text-chart-3" />
           </div>
-          <CardTitle className="text-base font-semibold text-foreground">
+          <CardTitle className="text-sm font-semibold text-foreground sm:text-base">
             Low Stock Alerts
           </CardTitle>
-          <span className="ml-auto px-2 py-0.5 text-xs font-medium rounded-full bg-chart-3/20 text-chart-3">
-            {lowStockItems.length} items
+          <span className="ml-auto rounded-full bg-chart-3/20 px-2 py-0.5 text-[10px] font-medium text-chart-3 sm:text-xs">
+            {displayItems.length} items
           </span>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
         <div className="space-y-3">
-          {lowStockItems.map((item) => {
+          {displayItems.length === 0 ? (
+            <div className="rounded-lg border border-border bg-secondary/30 px-3 py-2 text-xs text-muted-foreground">
+              No low stock items right now.
+            </div>
+          ) : (
+            displayItems.map((item) => {
             const percentage = Math.round((item.current / item.threshold) * 100)
             const isUrgent = percentage < 30
             return (
               <div
                 key={item.id}
-                className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-border"
+                className="flex items-center gap-3 rounded-lg border border-border bg-secondary/30 p-2.5 sm:p-3"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-foreground truncate">
+                    <p className="text-xs font-medium text-foreground truncate sm:text-sm">
                       {item.name}
                     </p>
                     {isUrgent && (
-                      <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-chart-4/20 text-chart-4">
+                      <span className="rounded bg-chart-4/20 px-1.5 py-0.5 text-[10px] font-medium text-chart-4">
                         URGENT
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-[11px] text-muted-foreground sm:text-xs">
                     {item.current} / {item.threshold} {item.unit}
                   </p>
                 </div>
@@ -103,13 +116,15 @@ export function LowStockAlert() {
                 </div>
               </div>
             )
-          })}
+          })
+          )}
         </div>
         <Button
+          asChild
           variant="outline"
-          className="w-full mt-4 border-border text-muted-foreground hover:text-foreground hover:bg-accent premium-btn bg-transparent"
+          className="mt-4 w-full border-border text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent premium-btn bg-transparent sm:text-xs"
         >
-          View All Inventory
+          <Link href={viewLink}>View All Inventory</Link>
         </Button>
       </CardContent>
     </Card>

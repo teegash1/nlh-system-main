@@ -40,13 +40,37 @@ const upcomingTasks = [
   },
 ]
 
-export function CalendarWidget() {
+interface WeekDay {
+  day: number
+  isToday: boolean
+  hasEvent: boolean
+}
+
+interface UpcomingTask {
+  id: string
+  title: string
+  type: string
+  time: string
+  color: string
+}
+
+interface CalendarWidgetProps {
+  todayLabel?: string
+  weekDays?: WeekDay[]
+  upcomingTasks?: UpcomingTask[]
+}
+
+export function CalendarWidget({
+  todayLabel = "Today, 20 January",
+  weekDays = currentWeek,
+  upcomingTasks: taskItems = upcomingTasks,
+}: CalendarWidgetProps) {
   return (
     <Card className="bg-card border-border">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-semibold text-foreground">
-            Today, 20 January
+            {todayLabel}
           </CardTitle>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-foreground">
@@ -60,21 +84,21 @@ export function CalendarWidget() {
       </CardHeader>
       <CardContent className="pt-0">
         {/* Week View */}
-        <div className="grid grid-cols-7 gap-1 mb-4">
+        <div className="mb-4 grid grid-cols-7 gap-1">
           {days.map((day, index) => (
             <div key={day} className="flex flex-col items-center gap-1">
               <span className="text-[10px] text-muted-foreground">{day}</span>
               <div
                 className={cn(
-                  "flex flex-col items-center justify-center w-9 h-9 rounded-lg text-sm font-medium transition-colors",
-                  currentWeek[index].isToday
+                  "flex flex-col items-center justify-center h-8 w-8 rounded-lg text-xs font-medium transition-colors sm:h-9 sm:w-9 sm:text-sm",
+                  weekDays[index]?.isToday
                     ? "bg-foreground text-background"
                     : "text-foreground hover:bg-accent cursor-pointer"
                 )}
               >
-                {currentWeek[index].day}
+                {weekDays[index]?.day}
               </div>
-              {currentWeek[index].hasEvent && (
+              {weekDays[index]?.hasEvent && (
                 <div className="flex gap-0.5">
                   <div className="w-1 h-1 rounded-full bg-chart-1" />
                   <div className="w-1 h-1 rounded-full bg-chart-2" />
@@ -86,20 +110,20 @@ export function CalendarWidget() {
 
         {/* Upcoming Tasks */}
         <div className="space-y-2">
-          {upcomingTasks.map((task) => (
+          {taskItems.map((task) => (
             <div
               key={task.id}
               className={cn(
-                "flex items-center gap-3 p-3 rounded-lg border border-border",
+                "flex items-center gap-3 rounded-lg border border-border p-2.5 sm:p-3",
                 task.color + "/10"
               )}
             >
               <div className={cn("w-1 h-10 rounded-full", task.color)} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground">{task.title}</p>
-                <p className="text-xs text-muted-foreground">{task.type}</p>
+                <p className="text-xs font-medium text-foreground sm:text-sm">{task.title}</p>
+                <p className="text-[11px] text-muted-foreground sm:text-xs">{task.type}</p>
               </div>
-              <span className="text-xs text-muted-foreground">{task.time}</span>
+              <span className="text-[11px] text-muted-foreground sm:text-xs">{task.time}</span>
             </div>
           ))}
         </div>

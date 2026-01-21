@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Bell, Search, Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,6 +24,7 @@ import {
   Users,
   HelpCircle,
 } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 const mobileMenuItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -43,7 +44,42 @@ interface HeaderProps {
 export function Header({ title, subtitle }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [userName, setUserName] = useState<string>("User")
+  const [userRole, setUserRole] = useState<string>("Viewer")
+  const [userEmail, setUserEmail] = useState<string>("")
   const pathname = usePathname()
+
+  useEffect(() => {
+    const supabase = createClient()
+    const loadProfile = async () => {
+      const { data: userData } = await supabase.auth.getUser()
+      const user = userData.user
+      if (!user) return
+      if (user.email) setUserEmail(user.email)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, role")
+        .eq("id", user.id)
+        .maybeSingle()
+      if (profile?.full_name) {
+        setUserName(profile.full_name)
+      } else if (user.email) {
+        setUserName(user.email.split("@")[0] ?? "User")
+      }
+      if (profile?.role) {
+        setUserRole(profile.role)
+      }
+    }
+    loadProfile()
+  }, [])
+
+  const initials = useMemo(() => {
+    const parts = userName.split(" ").filter(Boolean)
+    if (parts.length >= 2) {
+      return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase()
+    }
+    return (userName[0] ?? "U").toUpperCase()
+  }, [userName])
 
   return (
     <>
@@ -151,19 +187,33 @@ export function Header({ title, subtitle }: HeaderProps) {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  size="icon"
-                  className="rounded-full"
+                  className="rounded-full px-2"
                 >
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-[#3a3a40] to-[#2a2a30] border border-[#4a4a50]">
-                    <span className="text-xs font-semibold text-foreground">NL</span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-[#3a3a40] to-[#2a2a30] border border-[#4a4a50]">
+                      <span className="text-xs font-semibold text-foreground">{initials}</span>
+                    </div>
+                    <div className="flex max-w-[90px] flex-col text-left leading-tight sm:max-w-[160px]">
+                      <span className="text-[11px] font-semibold text-foreground sm:text-sm truncate">
+                        {userName}
+                      </span>
+                      <span className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground sm:text-[10px]">
+                        {userRole}
+                      </span>
+                    </div>
                   </div>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 bg-card border-border">
                 <DropdownMenuLabel className="text-foreground">
                   <div className="flex flex-col">
-                    <span>Admin User</span>
-                    <span className="text-xs font-normal text-muted-foreground">admin@nobles.org</span>
+                    <span>{userName}</span>
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      {userRole}
+                    </span>
+                    <span className="text-xs font-normal text-muted-foreground">
+                      {userEmail || "Signed in"}
+                    </span>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-border" />

@@ -418,75 +418,138 @@ export default async function ReportsPage() {
                         <span>{monthLabel}</span>
                       </div>
                       <div className="space-y-3">
-                        {receipts.map((receipt) => (
-                          <div
-                            key={receipt.id}
-                            className="rounded-xl border border-border bg-secondary/20 p-4"
-                          >
-                            <div className="flex flex-col gap-3 md:grid md:grid-cols-[110px_1.4fr_1fr_110px_160px_120px] md:items-center">
-                              <div className="text-xs text-foreground">
-                                <p className="font-medium">{formatShortDate(receipt.date)}</p>
-                                {receipt.reference && (
-                                  <p className="text-[10px] text-muted-foreground">
-                                    {receipt.reference}
-                                  </p>
-                                )}
+                        {receipts.map((receipt) => {
+                          const statusBadge = (
+                            <Badge
+                              variant="outline"
+                              className={`border text-[10px] ${
+                                receipt.status === "Verified"
+                                  ? "border-chart-2/40 text-chart-2 bg-chart-2/10"
+                                  : receipt.status === "Pending"
+                                    ? "border-chart-3/40 text-chart-3 bg-chart-3/10"
+                                    : "border-chart-4/40 text-chart-4 bg-chart-4/10"
+                              }`}
+                            >
+                              {receipt.status}
+                            </Badge>
+                          )
+
+                          const statusControl =
+                            canUpdateStatus && receipt.status !== "Verified" ? (
+                              <div className="w-[110px]">
+                                <ReceiptStatusSelect
+                                  receiptId={receipt.id}
+                                  initialStatus={receipt.status}
+                                />
                               </div>
-                              <div>
-                                <p className="text-xs font-medium text-foreground">
-                                  {receipt.vendor}
-                                </p>
-                                <p className="text-[11px] text-muted-foreground">
-                                  {receipt.paymentMethod}
-                                </p>
-                              </div>
-                              <div className="text-xs text-foreground">{receipt.category}</div>
-                              <div className="text-xs font-semibold text-foreground">
-                                KES {Number.isFinite(receipt.amount) ? receipt.amount.toLocaleString() : "0"}
-                              </div>
-                            <div className="flex flex-col items-start gap-2">
-                              <Badge
-                                variant="outline"
-                                className={`border text-[10px] ${
-                                  receipt.status === "Verified"
-                                    ? "border-chart-2/40 text-chart-2 bg-chart-2/10"
-                                    : receipt.status === "Pending"
-                                      ? "border-chart-3/40 text-chart-3 bg-chart-3/10"
-                                      : "border-chart-4/40 text-chart-4 bg-chart-4/10"
-                                }`}
-                              >
-                                {receipt.status}
-                              </Badge>
-                              {canUpdateStatus && receipt.status !== "Verified" && (
-                                <div className="w-[110px]">
-                                  <ReceiptStatusSelect
-                                    receiptId={receipt.id}
-                                    initialStatus={receipt.status}
-                                  />
+                            ) : null
+
+                          const actions = (
+                            <ReceiptActions
+                              receipt={{
+                                id: receipt.id,
+                                receiptDate: receipt.date,
+                                vendor: receipt.vendor,
+                                category: receipt.category,
+                                paymentMethod: receipt.paymentMethod,
+                                amount: receipt.amount,
+                                amountReceived: receipt.amountReceived,
+                                previousBalance: receipt.previousBalance,
+                                reference: receipt.reference,
+                              }}
+                              viewUrl={receipt.viewUrl}
+                              categories={receiptCategories}
+                              paymentMethods={paymentMethods}
+                            />
+                          )
+
+                          return (
+                            <div
+                              key={receipt.id}
+                              className="rounded-xl border border-border bg-secondary/20 p-4"
+                            >
+                              <div className="rounded-lg border border-border/60 bg-secondary/10 p-2.5 md:hidden">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div>
+                                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                                      Shoper
+                                    </p>
+                                    <p className="text-sm font-semibold text-foreground">
+                                      {receipt.vendor}
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground">
+                                      {receipt.paymentMethod}
+                                    </p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                                      Amount
+                                    </p>
+                                    <p className="text-sm font-semibold text-foreground">
+                                      KES {Number.isFinite(receipt.amount) ? receipt.amount.toLocaleString() : "0"}
+                                    </p>
+                                  </div>
                                 </div>
-                              )}
+                                <div className="mt-2.5 grid grid-cols-2 gap-2 text-[11px]">
+                                  <div>
+                                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                                      Date
+                                    </p>
+                                    <p className="text-foreground">
+                                      {formatShortDate(receipt.date)}
+                                    </p>
+                                    {receipt.reference && (
+                                      <p className="text-[10px] text-muted-foreground">
+                                        {receipt.reference}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                                      Category
+                                    </p>
+                                    <p className="text-foreground">{receipt.category}</p>
+                                  </div>
+                                </div>
+                                <div className="mt-2.5 flex items-center justify-between gap-2">
+                                  <div className="flex flex-col items-start gap-2">
+                                    {statusBadge}
+                                    {statusControl}
+                                  </div>
+                                  {actions}
+                                </div>
+                              </div>
+
+                              <div className="hidden md:grid md:grid-cols-[110px_1.4fr_1fr_110px_160px_120px] md:items-center md:gap-3">
+                                <div className="text-xs text-foreground">
+                                  <p className="font-medium">{formatShortDate(receipt.date)}</p>
+                                  {receipt.reference && (
+                                    <p className="text-[10px] text-muted-foreground">
+                                      {receipt.reference}
+                                    </p>
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="text-xs font-medium text-foreground">
+                                    {receipt.vendor}
+                                  </p>
+                                  <p className="text-[11px] text-muted-foreground">
+                                    {receipt.paymentMethod}
+                                  </p>
+                                </div>
+                                <div className="text-xs text-foreground">{receipt.category}</div>
+                                <div className="text-xs font-semibold text-foreground">
+                                  KES {Number.isFinite(receipt.amount) ? receipt.amount.toLocaleString() : "0"}
+                                </div>
+                                <div className="flex flex-col items-start gap-2">
+                                  {statusBadge}
+                                  {statusControl}
+                                </div>
+                                <div className="md:justify-self-center">{actions}</div>
+                              </div>
                             </div>
-                            <div className="md:justify-self-center">
-                              <ReceiptActions
-                                receipt={{
-                                  id: receipt.id,
-                                  receiptDate: receipt.date,
-                                  vendor: receipt.vendor,
-                                  category: receipt.category,
-                                  paymentMethod: receipt.paymentMethod,
-                                  amount: receipt.amount,
-                                  amountReceived: receipt.amountReceived,
-                                  previousBalance: receipt.previousBalance,
-                                  reference: receipt.reference,
-                                }}
-                                viewUrl={receipt.viewUrl}
-                                categories={receiptCategories}
-                                paymentMethods={paymentMethods}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                          )
+                        })}
                       </div>
                     </div>
                   ))

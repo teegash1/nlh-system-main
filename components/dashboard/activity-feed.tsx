@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Package, AlertTriangle, FileText, TrendingUp, CheckCircle2 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -66,20 +67,40 @@ const colorMap = {
   completed: "bg-chart-2/20 text-chart-2",
 }
 
-export function ActivityFeed() {
+interface ActivityFeedProps {
+  activities?: Activity[]
+  viewLink?: string
+}
+
+export function ActivityFeed({
+  activities: activityItems,
+  viewLink = "/reports",
+}: ActivityFeedProps) {
+  const displayActivities = activityItems ?? activities
+
   return (
     <Card className="bg-card border-border">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-semibold text-foreground">Recent Activity</CardTitle>
-          <button className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+          <CardTitle className="text-sm font-semibold text-foreground sm:text-base">
+            Recent Activity
+          </CardTitle>
+          <Link
+            href={viewLink}
+            className="text-[10px] font-medium text-muted-foreground transition-colors hover:text-foreground sm:text-xs"
+          >
             View all
-          </button>
+          </Link>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
         <div className="space-y-4">
-          {activities.map((activity) => {
+          {displayActivities.length === 0 ? (
+            <div className="rounded-lg border border-border bg-secondary/30 px-3 py-2 text-xs text-muted-foreground">
+              No activity yet.
+            </div>
+          ) : (
+            displayActivities.map((activity) => {
             const Icon = iconMap[activity.type]
             return (
               <div key={activity.id} className="flex items-start gap-3">
@@ -90,15 +111,20 @@ export function ActivityFeed() {
                   <Icon className="h-4 w-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground">{activity.title}</p>
-                  <p className="text-xs text-muted-foreground truncate">{activity.description}</p>
+                  <p className="text-xs font-medium text-foreground sm:text-sm">
+                    {activity.title}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground sm:text-xs truncate">
+                    {activity.description}
+                  </p>
                 </div>
                 <span className="text-[10px] text-muted-foreground whitespace-nowrap">
                   {activity.time}
                 </span>
               </div>
             )
-          })}
+          })
+          )}
         </div>
       </CardContent>
     </Card>
