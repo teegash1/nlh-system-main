@@ -362,17 +362,19 @@ export default async function ReportsPage() {
           <CardContent>
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.6fr]">
               <div className="space-y-4 rounded-xl border border-border bg-secondary/20 p-4">
-                <div className="flex items-center justify-between">
-                  <div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="space-y-1">
                     <p className="text-sm font-semibold text-foreground">Upload receipt</p>
                     <p className="text-xs text-muted-foreground">
                       Attach proof for each expenditure.
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <CategoryManagerDialog categories={categoryOptions} />
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-chart-2/20">
-                      <Upload className="h-5 w-5 text-chart-2" />
+                  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                    <div className="w-full sm:w-auto">
+                      <CategoryManagerDialog categories={categoryOptions} />
+                    </div>
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-chart-2/20">
+                      <Upload className="h-4 w-4 text-chart-2" />
                     </div>
                   </div>
                 </div>
