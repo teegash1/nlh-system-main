@@ -1,7 +1,6 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { parseISO } from "date-fns"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChevronLeft, ChevronRight } from "lucide-react"
@@ -92,15 +91,23 @@ const formatUtcTime = (date: Date) =>
   })
 
 const normalizeTimestamp = (value: string) => {
-  let normalized = value.trim()
-  if (!normalized) return null
-  normalized = normalized.replace(" ", "T")
+  const raw = (value ?? "").trim()
+  if (!raw) return null
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return `${raw}T00:00:00Z`
+  }
+
+  let normalized = raw.replace(" ", "T")
+
   if (/([+-]\d{2})$/.test(normalized)) {
     normalized = normalized.replace(/([+-]\d{2})$/, "$1:00")
   }
+
   if (!/[zZ]|[+-]\d{2}:?\d{2}$/.test(normalized)) {
     normalized = `${normalized}Z`
   }
+
   return normalized
 }
 
@@ -279,7 +286,7 @@ export function CalendarWidget({
   const eventsByDate = useMemo(() => {
     const map = new Map<string, string[]>()
     mergedEvents.forEach((event) => {
-      const parsed = parseISO(event.date)
+      const parsed = parseTimestampUtc(event.date)
       if (Number.isNaN(parsed.getTime())) return
       const key = toUtcDateKey(parsed)
       const existing = map.get(key) ?? []
@@ -311,7 +318,7 @@ export function CalendarWidget({
     return mergedTasks
       .map((task) => ({
         ...task,
-        parsedDate: parseISO(task.date),
+        parsedDate: parseTimestampUtc(task.date),
       }))
       .filter((task) => {
         if (Number.isNaN(task.parsedDate.getTime())) return false
