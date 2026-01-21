@@ -9,6 +9,8 @@ import {
   isSameDay,
   isSameWeek,
   isWithinInterval,
+  isValid,
+  parseISO,
   startOfWeek,
   subWeeks,
 } from "date-fns"
@@ -54,7 +56,9 @@ export function CalendarWidget({
   const eventsByDate = useMemo(() => {
     const map = new Map<string, string[]>()
     events.forEach((event) => {
-      const key = event.date
+      const parsed = parseISO(event.date)
+      if (!isValid(parsed)) return
+      const key = format(parsed, "yyyy-MM-dd")
       const existing = map.get(key) ?? []
       if (!existing.includes(event.colorClass)) {
         existing.push(event.colorClass)

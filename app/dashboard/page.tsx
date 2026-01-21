@@ -451,7 +451,7 @@ export default async function DashboardPage() {
       colorClass: "bg-chart-1",
     })),
     ...reminderOccurrences.map((entry) => ({
-      date: format(entry.date, "yyyy-MM-dd"),
+      date: entry.date.toISOString(),
       colorClass:
         colorClassMap[entry.reminder.color ?? "chart-1"] ?? "bg-chart-1",
     })),
