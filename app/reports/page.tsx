@@ -9,6 +9,7 @@ import { ReceiptsExportButton } from "@/components/reports/receipts-export-butto
 import { CategoryManagerDialog } from "@/components/stock/category-manager-dialog"
 import { ReportExportMenu } from "@/components/reports/report-export-menu"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import Link from "next/link"
 import { FileText, Download, Calendar, TrendingUp, Package, DollarSign, Upload } from "lucide-react"
 
@@ -124,6 +125,7 @@ export default async function ReportsPage() {
   let receipts: ReceiptEntry[] = []
   let receiptCategories: string[] = []
   let categoryOptions: { id: string; name: string }[] = []
+  let adminClient: ReturnType<typeof createAdminClient> | null = null
 
   const { data: categoriesData, error: categoriesError } = await supabase
     .from("inventory_categories")
@@ -149,13 +151,27 @@ export default async function ReportsPage() {
 
     canUpdateStatus = profile?.role === "admin"
 
-    const { data, error } = await supabase
+    if (canUpdateStatus) {
+      try {
+        adminClient = createAdminClient()
+      } catch {
+        adminClient = null
+      }
+    }
+
+    const receiptsClient = adminClient ?? supabase
+    const receiptsQuery = receiptsClient
       .from("receipts")
       .select(
         "id, receipt_date, vendor, category, amount, amount_received, balance, payment_method, status, reference, file_path, created_at"
       )
-      .eq("user_id", userId)
       .order("receipt_date", { ascending: false })
+
+    if (!adminClient) {
+      receiptsQuery.eq("user_id", userId)
+    }
+
+    const { data, error } = await receiptsQuery
 
     if (error) {
       throw new Error(error.message)
@@ -166,7 +182,7 @@ export default async function ReportsPage() {
         if (!row.file_path) {
           return { id: row.id, viewUrl: null, fileName: null }
         }
-        const { data: signed } = await supabase.storage
+        const { data: signed } = await receiptsClient.storage
           .from("receipts")
           .createSignedUrl(row.file_path, 60 * 60)
         const fileName = row.file_path.split("/").pop() ?? null

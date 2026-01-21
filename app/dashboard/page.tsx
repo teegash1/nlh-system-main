@@ -9,14 +9,12 @@ import { CalendarWidget } from "@/components/dashboard/calendar-widget"
 import { Package, TrendingUp, DollarSign, AlertTriangle } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import {
-  addDays,
   addMonths,
   addWeeks,
   differenceInCalendarDays,
   differenceInCalendarMonths,
   differenceInCalendarWeeks,
   endOfMonth,
-  endOfDay,
   endOfWeek,
   format,
   formatDistanceToNow,
@@ -24,7 +22,6 @@ import {
   isBefore,
   isWithinInterval,
   parseISO,
-  startOfDay,
   startOfMonth,
   startOfWeek,
   subMonths,
@@ -460,20 +457,10 @@ export default async function DashboardPage() {
     })),
   ]
 
-  const reminderWindowStart = startOfDay(now)
-  const reminderWindowEnd = endOfDay(addDays(now, 13))
-  const upcomingReminderOccurrences = reminders
-    .flatMap((reminder) =>
-      buildOccurrences(reminder, reminderWindowStart, reminderWindowEnd).map(
-        (date) => ({
-          reminder,
-          date,
-        })
-      )
-    )
+  const reminderTasks = reminderOccurrences
+    .slice()
     .sort((a, b) => a.date.getTime() - b.date.getTime())
-
-  const reminderTasks = upcomingReminderOccurrences.slice(0, 4).map((entry) => {
+    .map((entry) => {
     const recurrenceKey = entry.reminder.recurrence ?? "none"
     const label = recurrenceLabels[recurrenceKey] ?? "Reminder"
     const timeLabel = format(entry.date, "EEE • h:mm a")
@@ -483,6 +470,7 @@ export default async function DashboardPage() {
       type: label,
       time: timeLabel,
       color: colorClassMap[entry.reminder.color ?? "chart-1"] ?? "bg-chart-1",
+      date: entry.date.toISOString(),
     }
   })
 
@@ -496,6 +484,7 @@ export default async function DashboardPage() {
             type: "Inventory",
             time: "Today",
             color: "bg-chart-3",
+            date: now.toISOString(),
           },
         ]
       : []),
@@ -507,6 +496,7 @@ export default async function DashboardPage() {
             type: "Inventory",
             time: "This week",
             color: "bg-chart-1",
+            date: now.toISOString(),
           },
         ]
       : []),
@@ -518,10 +508,11 @@ export default async function DashboardPage() {
             type: "Admin",
             time: "This week",
             color: "bg-chart-2",
+            date: now.toISOString(),
           },
         ]
       : []),
-  ].slice(0, 5)
+  ]
 
   return (
     <AppShell

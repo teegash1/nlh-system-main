@@ -4,9 +4,11 @@ import { useMemo, useState } from "react"
 import {
   addDays,
   addWeeks,
+  endOfWeek,
   format,
   isSameDay,
   isSameWeek,
+  isWithinInterval,
   startOfWeek,
   subWeeks,
 } from "date-fns"
@@ -29,6 +31,7 @@ interface UpcomingTask {
   type: string
   time: string
   color: string
+  date: string
 }
 
 interface CalendarWidgetProps {
@@ -73,6 +76,22 @@ export function CalendarWidget({
       }
     })
   }, [weekStart, eventsByDate])
+
+  const visibleTasks = useMemo(() => {
+    const start = startOfWeek(weekStart, { weekStartsOn: 1 })
+    const end = endOfWeek(weekStart, { weekStartsOn: 1 })
+
+    return taskItems
+      .map((task) => ({
+        ...task,
+        parsedDate: new Date(task.date),
+      }))
+      .filter((task) => {
+        if (Number.isNaN(task.parsedDate.getTime())) return false
+        return isWithinInterval(task.parsedDate, { start, end })
+      })
+      .sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime())
+  }, [taskItems, weekStart])
 
   const headerLabel = isSameWeek(weekStart, new Date(), { weekStartsOn: 1 })
     ? todayLabel
@@ -137,12 +156,12 @@ export function CalendarWidget({
 
         {/* Upcoming Tasks */}
         <div className="space-y-2">
-          {taskItems.length === 0 ? (
+          {visibleTasks.length === 0 ? (
             <div className="rounded-lg border border-border bg-secondary/30 px-3 py-2 text-xs text-muted-foreground">
-              No reminders scheduled yet.
+              No reminders scheduled for this week.
             </div>
           ) : (
-            taskItems.map((task) => (
+            visibleTasks.map((task) => (
             <div
               key={task.id}
               className={cn(
