@@ -10,18 +10,12 @@ import { Package, TrendingUp, DollarSign, AlertTriangle } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import {
-  addMonths,
   addWeeks,
   differenceInCalendarDays,
-  differenceInCalendarMonths,
-  differenceInCalendarWeeks,
   endOfMonth,
   endOfWeek,
   format,
   formatDistanceToNow,
-  isAfter,
-  isBefore,
-  isWithinInterval,
   parseISO,
   startOfMonth,
   startOfWeek,
@@ -52,71 +46,6 @@ type ReminderRow = {
   start_at: string
   recurrence: string | null
   color: string | null
-}
-
-const recurrenceLabels: Record<string, string> = {
-  none: "Reminder",
-  weekly: "Weekly reminder",
-  biweekly: "Bi-weekly reminder",
-  monthly: "Monthly reminder",
-  quarterly: "Quarterly reminder",
-}
-
-const buildOccurrences = (
-  reminder: ReminderRow,
-  rangeStart: Date,
-  rangeEnd: Date
-) => {
-  const startAt = new Date(reminder.start_at)
-  if (Number.isNaN(startAt.getTime())) return []
-
-  const recurrence = reminder.recurrence ?? "none"
-  if (recurrence === "none") {
-    return isWithinInterval(startAt, { start: rangeStart, end: rangeEnd })
-      ? [startAt]
-      : []
-  }
-
-  const occurrences: Date[] = []
-  if (recurrence === "weekly" || recurrence === "biweekly") {
-    const interval = recurrence === "weekly" ? 1 : 2
-    let occurrence = startAt
-    if (isBefore(occurrence, rangeStart)) {
-      const diffWeeks = differenceInCalendarWeeks(rangeStart, occurrence, {
-        weekStartsOn: 1,
-      })
-      const steps = Math.floor(diffWeeks / interval) * interval
-      occurrence = addWeeks(occurrence, steps)
-      while (isBefore(occurrence, rangeStart)) {
-        occurrence = addWeeks(occurrence, interval)
-      }
-    }
-    while (!isAfter(occurrence, rangeEnd)) {
-      occurrences.push(occurrence)
-      occurrence = addWeeks(occurrence, interval)
-    }
-    return occurrences
-  }
-
-  if (recurrence === "monthly" || recurrence === "quarterly") {
-    const interval = recurrence === "monthly" ? 1 : 3
-    let occurrence = startAt
-    if (isBefore(occurrence, rangeStart)) {
-      const diffMonths = differenceInCalendarMonths(rangeStart, occurrence)
-      const steps = Math.floor(diffMonths / interval) * interval
-      occurrence = addMonths(occurrence, steps)
-      while (isBefore(occurrence, rangeStart)) {
-        occurrence = addMonths(occurrence, interval)
-      }
-    }
-    while (!isAfter(occurrence, rangeEnd)) {
-      occurrences.push(occurrence)
-      occurrence = addMonths(occurrence, interval)
-    }
-    return occurrences
-  }
-
-  return []
 }
 
 const colorClassMap: Record<string, string> = {
@@ -443,13 +372,6 @@ export default async function DashboardPage() {
     reminders = (reminderRows ?? []) as ReminderRow[]
   }
 
-  const reminderOccurrences = reminders.flatMap((reminder) =>
-    buildOccurrences(reminder, calendarStart, calendarEnd).map((date) => ({
-      reminder,
-      date,
-    }))
-  )
-
   const calendarEvents = [
     ...calendarReceipts.map((date) => ({
       date,
@@ -459,32 +381,9 @@ export default async function DashboardPage() {
       date,
       colorClass: "bg-chart-1",
     })),
-    ...reminderOccurrences.map((entry) => ({
-      date: format(entry.date, "yyyy-MM-dd"),
-      colorClass:
-        colorClassMap[entry.reminder.color ?? "chart-1"] ?? "bg-chart-1",
-    })),
   ]
 
-  const reminderTasks = reminderOccurrences
-    .slice()
-    .sort((a, b) => a.date.getTime() - b.date.getTime())
-    .map((entry) => {
-      const recurrenceKey = entry.reminder.recurrence ?? "none"
-      const label = recurrenceLabels[recurrenceKey] ?? "Reminder"
-      const timeLabel = format(entry.date, "EEE • h:mm a")
-      return {
-        id: `reminder-${entry.reminder.id}-${entry.date.toISOString()}`,
-        title: entry.reminder.title,
-        type: label,
-        time: timeLabel,
-        color: colorClassMap[entry.reminder.color ?? "chart-1"] ?? "bg-chart-1",
-        date: format(entry.date, "yyyy-MM-dd"),
-      }
-    })
-
   const upcomingTasks = [
-    ...reminderTasks,
     ...(lowStockItems.length > 0
       ? [
           {
@@ -600,10 +499,15 @@ export default async function DashboardPage() {
           {/* Right Column - Sidebar Content */}
           <div className="space-y-6">
             <CalendarWidget
-              todayLabel={`Today, ${format(now, "d MMMM")}`}
+              todayLabel={`Today, ${now.toLocaleDateString("en-US", {
+                timeZone: "UTC",
+                day: "numeric",
+                month: "long",
+              })}`}
               events={calendarEvents}
               upcomingTasks={upcomingTasks}
-              initialWeekStart={startOfWeek(now, { weekStartsOn: 1 })}
+              initialWeekStart={new Date()}
+              reminders={reminders}
             />
             <LowStockAlert items={lowStockItems} />
             <ActivityFeed activities={activities} />

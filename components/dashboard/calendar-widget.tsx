@@ -1,19 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import {
-  addDays,
-  addWeeks,
-  endOfWeek,
-  format,
-  isSameDay,
-  isSameWeek,
-  isWithinInterval,
-  isValid,
-  parseISO,
-  startOfWeek,
-  subWeeks,
-} from "date-fns"
+import { parseISO } from "date-fns"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChevronLeft, ChevronRight } from "lucide-react"
@@ -22,9 +10,98 @@ import { cn } from "@/lib/utils"
 
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
+const pad = (value: number) => String(value).padStart(2, "0")
+
+const toUtcDateKey = (date: Date) =>
+  `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(
+    date.getUTCDate()
+  )}`
+
+const startOfWeekUtc = (date: Date, weekStartsOn = 1) => {
+  const day = date.getUTCDay()
+  const diff = (day - weekStartsOn + 7) % 7
+  return new Date(
+    Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate() - diff
+    )
+  )
+}
+
+const addDaysUtc = (date: Date, daysToAdd: number) =>
+  new Date(
+    Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate() + daysToAdd
+    )
+  )
+
+const addWeeksUtc = (date: Date, weeksToAdd: number) =>
+  addDaysUtc(date, weeksToAdd * 7)
+
+const addMonthsUtc = (date: Date, monthsToAdd: number) =>
+  new Date(
+    Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth() + monthsToAdd,
+      date.getUTCDate()
+    )
+  )
+
+const differenceInCalendarMonthsUtc = (left: Date, right: Date) =>
+  left.getUTCFullYear() * 12 +
+  left.getUTCMonth() -
+  (right.getUTCFullYear() * 12 + right.getUTCMonth())
+
+const differenceInCalendarWeeksUtc = (
+  left: Date,
+  right: Date,
+  weekStartsOn = 1
+) => {
+  const leftStart = startOfWeekUtc(left, weekStartsOn).getTime()
+  const rightStart = startOfWeekUtc(right, weekStartsOn).getTime()
+  return Math.round((leftStart - rightStart) / (7 * 24 * 60 * 60 * 1000))
+}
+
+const isAfterUtc = (left: Date, right: Date) =>
+  left.getTime() > right.getTime()
+
+const endOfWeekUtc = (date: Date, weekStartsOn = 1) =>
+  addDaysUtc(startOfWeekUtc(date, weekStartsOn), 6)
+
+const isSameDayUtc = (left: Date, right: Date) =>
+  toUtcDateKey(left) === toUtcDateKey(right)
+
+const isSameWeekUtc = (left: Date, right: Date, weekStartsOn = 1) =>
+  toUtcDateKey(startOfWeekUtc(left, weekStartsOn)) ===
+  toUtcDateKey(startOfWeekUtc(right, weekStartsOn))
+
+const isWithinIntervalUtc = (date: Date, start: Date, end: Date) =>
+  date.getTime() >= start.getTime() && date.getTime() <= end.getTime()
+
+const formatUtcDate = (date: Date, options: Intl.DateTimeFormatOptions) =>
+  date.toLocaleDateString("en-US", { timeZone: "UTC", ...options })
+
+const formatUtcTime = (date: Date) =>
+  date.toLocaleTimeString("en-US", {
+    timeZone: "UTC",
+    hour: "numeric",
+    minute: "2-digit",
+  })
+
 interface CalendarEvent {
   date: string
   colorClass: string
+}
+
+interface CalendarReminder {
+  id: string
+  title: string
+  start_at: string
+  recurrence: string | null
+  color: string | null
 }
 
 interface UpcomingTask {
@@ -41,6 +118,7 @@ interface CalendarWidgetProps {
   events?: CalendarEvent[]
   upcomingTasks?: UpcomingTask[]
   initialWeekStart?: Date
+  reminders?: CalendarReminder[]
 }
 
 export function CalendarWidget({
@@ -48,17 +126,143 @@ export function CalendarWidget({
   events = [],
   upcomingTasks: taskItems = [],
   initialWeekStart,
+  reminders = [],
 }: CalendarWidgetProps) {
   const [weekStart, setWeekStart] = useState<Date>(
-    initialWeekStart ?? startOfWeek(new Date(), { weekStartsOn: 1 })
+    startOfWeekUtc(initialWeekStart ?? new Date(), 1)
   )
+
+  const buildOccurrences = (
+    startAt: Date,
+    recurrence: string,
+    rangeStart: Date,
+    rangeEnd: Date
+  ) => {
+    if (recurrence === "none") {
+      return isWithinIntervalUtc(startAt, rangeStart, rangeEnd)
+        ? [startAt]
+        : []
+    }
+
+    const occurrences: Date[] = []
+    if (recurrence === "weekly" || recurrence === "biweekly") {
+      const interval = recurrence === "weekly" ? 1 : 2
+      let occurrence = startAt
+      if (occurrence < rangeStart) {
+        const diffWeeks = differenceInCalendarWeeksUtc(
+          rangeStart,
+          occurrence,
+          1
+        )
+        const steps = Math.floor(diffWeeks / interval) * interval
+        occurrence = addWeeksUtc(occurrence, steps)
+        while (occurrence < rangeStart) {
+          occurrence = addWeeksUtc(occurrence, interval)
+        }
+      }
+      while (!isAfterUtc(occurrence, rangeEnd)) {
+        occurrences.push(occurrence)
+        occurrence = addWeeksUtc(occurrence, interval)
+      }
+      return occurrences
+    }
+
+    if (recurrence === "monthly" || recurrence === "quarterly") {
+      const interval = recurrence === "monthly" ? 1 : 3
+      let occurrence = startAt
+      if (occurrence < rangeStart) {
+        const diffMonths = differenceInCalendarMonthsUtc(rangeStart, occurrence)
+        const steps = Math.floor(diffMonths / interval) * interval
+        occurrence = addMonthsUtc(occurrence, steps)
+        while (occurrence < rangeStart) {
+          occurrence = addMonthsUtc(occurrence, interval)
+        }
+      }
+      while (!isAfterUtc(occurrence, rangeEnd)) {
+        occurrences.push(occurrence)
+        occurrence = addMonthsUtc(occurrence, interval)
+      }
+      return occurrences
+    }
+
+    return []
+  }
+
+  const reminderData = useMemo(() => {
+    if (!reminders.length) {
+      return { reminderEvents: [], reminderTasks: [] as UpcomingTask[] }
+    }
+
+    const rangeStart = startOfWeekUtc(weekStart, 1)
+    const rangeEnd = endOfWeekUtc(weekStart, 1)
+    const colorMap: Record<string, string> = {
+      "chart-1": "bg-chart-1",
+      "chart-2": "bg-chart-2",
+      "chart-3": "bg-chart-3",
+      "chart-4": "bg-chart-4",
+      "chart-5": "bg-chart-5",
+    }
+    const recurrenceLabels: Record<string, string> = {
+      none: "Reminder",
+      weekly: "Weekly reminder",
+      biweekly: "Bi-weekly reminder",
+      monthly: "Monthly reminder",
+      quarterly: "Quarterly reminder",
+    }
+
+    const occurrences = reminders.flatMap((reminder) => {
+      const startAt = new Date(reminder.start_at)
+      if (Number.isNaN(startAt.getTime())) return []
+      const recurrence = String(reminder.recurrence ?? "none")
+      return buildOccurrences(startAt, recurrence, rangeStart, rangeEnd).map(
+        (date) => ({
+          reminder,
+          date,
+        })
+      )
+    })
+
+    return {
+      reminderEvents: occurrences.map((entry) => ({
+        date: entry.date.toISOString(),
+        colorClass:
+          colorMap[String(entry.reminder.color ?? "chart-1")] ?? "bg-chart-1",
+      })),
+      reminderTasks: occurrences.map((entry) => {
+        const recurrenceKey = String(entry.reminder.recurrence ?? "none")
+        return {
+          id: `reminder-${entry.reminder.id}-${entry.date.toISOString()}`,
+          title: entry.reminder.title,
+          type: recurrenceLabels[recurrenceKey] ?? "Reminder",
+          time: `${formatUtcDate(entry.date, {
+            weekday: "short",
+          })} • ${formatUtcTime(entry.date)}`,
+          color:
+            colorMap[String(entry.reminder.color ?? "chart-1")] ?? "bg-chart-1",
+          date: entry.date.toISOString(),
+        }
+      }),
+    }
+  }, [reminders, weekStart])
+
+  const mergedEvents = useMemo(
+    () => [...events, ...reminderData.reminderEvents],
+    [events, reminderData.reminderEvents]
+  )
+
+  const mergedTasks = useMemo(() => {
+    const merged = new Map<string, UpcomingTask>()
+    taskItems.forEach((item) => merged.set(item.id, item))
+    reminderData.reminderTasks.forEach((item) => merged.set(item.id, item))
+    return Array.from(merged.values())
+  }, [taskItems, reminderData.reminderTasks])
 
   const eventsByDate = useMemo(() => {
     const map = new Map<string, string[]>()
-    events.forEach((event) => {
+    mergedEvents.forEach((event) => {
       const parsed = parseISO(event.date)
-      if (!isValid(parsed)) return
-      const key = format(parsed, "yyyy-MM-dd")
+      if (Number.isNaN(parsed.getTime())) return
+      const key = toUtcDateKey(parsed)
       const existing = map.get(key) ?? []
       if (!existing.includes(event.colorClass)) {
         existing.push(event.colorClass)
@@ -66,40 +270,40 @@ export function CalendarWidget({
       map.set(key, existing)
     })
     return map
-  }, [events])
+  }, [mergedEvents])
 
   const weekDays = useMemo(() => {
-    const start = startOfWeek(weekStart, { weekStartsOn: 1 })
+    const start = startOfWeekUtc(weekStart, 1)
     return Array.from({ length: 7 }, (_, index) => {
-      const date = addDays(start, index)
-      const key = format(date, "yyyy-MM-dd")
+      const date = addDaysUtc(start, index)
+      const key = toUtcDateKey(date)
       return {
-        label: format(date, "d"),
-        isToday: isSameDay(date, new Date()),
+        label: formatUtcDate(date, { day: "numeric" }),
+        isToday: isSameDayUtc(date, new Date()),
         colors: eventsByDate.get(key) ?? [],
       }
     })
   }, [weekStart, eventsByDate])
 
   const visibleTasks = useMemo(() => {
-    const start = startOfWeek(weekStart, { weekStartsOn: 1 })
-    const end = endOfWeek(weekStart, { weekStartsOn: 1 })
+    const start = startOfWeekUtc(weekStart, 1)
+    const end = endOfWeekUtc(weekStart, 1)
 
-    return taskItems
+    return mergedTasks
       .map((task) => ({
         ...task,
         parsedDate: parseISO(task.date),
       }))
       .filter((task) => {
-        if (!isValid(task.parsedDate)) return false
-        return isWithinInterval(task.parsedDate, { start, end })
+        if (Number.isNaN(task.parsedDate.getTime())) return false
+        return isWithinIntervalUtc(task.parsedDate, start, end)
       })
       .sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime())
-  }, [taskItems, weekStart])
+  }, [mergedTasks, weekStart])
 
-  const headerLabel = isSameWeek(weekStart, new Date(), { weekStartsOn: 1 })
+  const headerLabel = isSameWeekUtc(weekStart, new Date(), 1)
     ? todayLabel
-    : `Week of ${format(weekStart, "MMM d")}`
+    : `Week of ${formatUtcDate(weekStart, { month: "short", day: "numeric" })}`
 
   return (
     <Card className="bg-card border-border">
@@ -113,7 +317,7 @@ export function CalendarWidget({
               variant="ghost"
               size="icon-sm"
               className="text-muted-foreground hover:text-foreground"
-              onClick={() => setWeekStart((prev) => subWeeks(prev, 1))}
+              onClick={() => setWeekStart((prev) => addWeeksUtc(prev, -1))}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -121,7 +325,7 @@ export function CalendarWidget({
               variant="ghost"
               size="icon-sm"
               className="text-muted-foreground hover:text-foreground"
-              onClick={() => setWeekStart((prev) => addWeeks(prev, 1))}
+              onClick={() => setWeekStart((prev) => addWeeksUtc(prev, 1))}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
