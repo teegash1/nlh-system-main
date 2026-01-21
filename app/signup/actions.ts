@@ -7,7 +7,12 @@ export async function signup(formData: FormData) {
   const email = String(formData.get("email") || "").trim()
   const password = String(formData.get("password") || "")
   const fullName = String(formData.get("fullName") || "").trim()
+  const roleInput = String(formData.get("role") || "")
+    .trim()
+    .toLowerCase()
   const confirmPassword = String(formData.get("confirmPassword") || "")
+  const allowedRoles = new Set(["admin", "manager", "viewer"])
+  const role = allowedRoles.has(roleInput) ? roleInput : "viewer"
 
   if (!email || !password) {
     redirect(
@@ -27,7 +32,7 @@ export async function signup(formData: FormData) {
     email,
     password,
     options: {
-      data: { full_name: fullName, role: "viewer" },
+      data: { full_name: fullName, role },
     },
   })
   if (error) {

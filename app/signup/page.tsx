@@ -164,6 +164,7 @@ export default async function SignupPage({
                     placeholder="Nobles Lighthouse"
                     autoComplete="organization"
                     required
+                    defaultValue="Nobles Lighthouse"
                     className="bg-secondary/40 border-border text-foreground"
                     />
                   </div>
@@ -171,14 +172,16 @@ export default async function SignupPage({
                   <Label htmlFor="role" className="text-foreground">
                     Role
                   </Label>
-                  <Input
+                  <select
                     id="role"
                     name="role"
-                    type="text"
-                    placeholder="Stock Steward"
-                    autoComplete="organization-title"
-                    className="bg-secondary/40 border-border text-foreground"
-                    />
+                    defaultValue="viewer"
+                    className="h-10 w-full rounded-md border border-border bg-secondary/40 px-3 text-sm text-foreground"
+                  >
+                    <option value="admin">Administrator</option>
+                    <option value="manager">Stock Manager</option>
+                    <option value="viewer">Viewer</option>
+                  </select>
                   </div>
                 </div>
                 <div className="space-y-2">
