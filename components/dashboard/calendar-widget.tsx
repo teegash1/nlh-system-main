@@ -91,6 +91,25 @@ const formatUtcTime = (date: Date) =>
     minute: "2-digit",
   })
 
+const normalizeTimestamp = (value: string) => {
+  let normalized = value.trim()
+  if (!normalized) return null
+  normalized = normalized.replace(" ", "T")
+  if (/([+-]\d{2})$/.test(normalized)) {
+    normalized = normalized.replace(/([+-]\d{2})$/, "$1:00")
+  }
+  if (!/[zZ]|[+-]\d{2}:?\d{2}$/.test(normalized)) {
+    normalized = `${normalized}Z`
+  }
+  return normalized
+}
+
+const parseTimestampUtc = (value: string) => {
+  const normalized = normalizeTimestamp(value)
+  if (!normalized) return new Date(NaN)
+  return new Date(normalized)
+}
+
 interface CalendarEvent {
   date: string
   colorClass: string
@@ -211,7 +230,7 @@ export function CalendarWidget({
     }
 
     const occurrences = reminders.flatMap((reminder) => {
-      const startAt = new Date(reminder.start_at)
+      const startAt = parseTimestampUtc(reminder.start_at)
       if (Number.isNaN(startAt.getTime())) return []
       const recurrence = String(reminder.recurrence ?? "none")
       return buildOccurrences(startAt, recurrence, rangeStart, rangeEnd).map(

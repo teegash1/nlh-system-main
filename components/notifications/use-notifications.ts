@@ -35,6 +35,25 @@ const recurrenceLabels: Record<string, string> = {
   quarterly: "Quarterly reminder",
 }
 
+const normalizeTimestamp = (value: string) => {
+  let normalized = value.trim()
+  if (!normalized) return null
+  normalized = normalized.replace(" ", "T")
+  if (/([+-]\d{2})$/.test(normalized)) {
+    normalized = normalized.replace(/([+-]\d{2})$/, "$1:00")
+  }
+  if (!/[zZ]|[+-]\d{2}:?\d{2}$/.test(normalized)) {
+    normalized = `${normalized}Z`
+  }
+  return normalized
+}
+
+const parseTimestampUtc = (value: string) => {
+  const normalized = normalizeTimestamp(value)
+  if (!normalized) return new Date(NaN)
+  return new Date(normalized)
+}
+
 const parseCountValue = (value: unknown, rawValue?: string | null) => {
   if (typeof value === "number" && Number.isFinite(value)) return value
   const raw = String(rawValue ?? "").trim().toLowerCase()
@@ -171,7 +190,7 @@ export function useNotifications() {
 
       const reminderNotifications = (reminders ?? [])
         .map((reminder: any) => {
-          const startAt = new Date(reminder.start_at)
+          const startAt = parseTimestampUtc(String(reminder.start_at ?? ""))
           if (Number.isNaN(startAt.getTime())) return null
           const recurrence = String(reminder.recurrence ?? "none")
           const next = getNextOccurrence(startAt, recurrence, now)
