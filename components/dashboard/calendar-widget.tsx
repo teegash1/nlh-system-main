@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import {
   addDays,
   addMonths,
@@ -24,13 +24,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { createClient } from "@/lib/supabase/client"
 
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 interface CalendarEvent {
   date: string
   colorClass: string
+}
+
+interface CalendarReminder {
+  id: string
+  title: string
+  start_at: string
+  recurrence: string | null
+  color: string | null
 }
 
 interface UpcomingTask {
@@ -47,6 +54,7 @@ interface CalendarWidgetProps {
   events?: CalendarEvent[]
   upcomingTasks?: UpcomingTask[]
   initialWeekStart?: Date
+  reminders?: CalendarReminder[]
 }
 
 export function CalendarWidget({
@@ -54,12 +62,11 @@ export function CalendarWidget({
   events = [],
   upcomingTasks: taskItems = [],
   initialWeekStart,
+  reminders = [],
 }: CalendarWidgetProps) {
   const [weekStart, setWeekStart] = useState<Date>(
     initialWeekStart ?? startOfWeek(new Date(), { weekStartsOn: 1 })
   )
-  const [reminderEvents, setReminderEvents] = useState<CalendarEvent[]>([])
-  const [reminderTasks, setReminderTasks] = useState<UpcomingTask[]>([])
 
   const buildOccurrences = (
     startAt: Date,
@@ -115,28 +122,8 @@ export function CalendarWidget({
     return []
   }
 
-  useEffect(() => {
-    const loadReminders = async () => {
-      const supabase = createClient()
-      const { data: userData } = await supabase.auth.getUser()
-      if (!userData.user) {
-        setReminderEvents([])
-        setReminderTasks([])
-        return
-      }
-
-      const { data, error } = await supabase
-        .from("reminders")
-        .select("id, title, start_at, recurrence, color")
-        .eq("user_id", userData.user.id)
-        .order("start_at", { ascending: true })
-
-      if (error) {
-        setReminderEvents([])
-        setReminderTasks([])
-        return
-      }
-
+  const mergedEvents = useMemo(
+    () => {
       const rangeStart = startOfWeek(weekStart, { weekStartsOn: 1 })
       const rangeEnd = endOfWeek(weekStart, { weekStartsOn: 1 })
       const colorMap: Record<string, string> = {
@@ -146,65 +133,63 @@ export function CalendarWidget({
         "chart-4": "bg-chart-4",
         "chart-5": "bg-chart-5",
       }
-      const recurrenceLabels: Record<string, string> = {
-        none: "Reminder",
-        weekly: "Weekly reminder",
-        biweekly: "Bi-weekly reminder",
-        monthly: "Monthly reminder",
-        quarterly: "Quarterly reminder",
-      }
 
-      const occurrences = (data ?? []).flatMap((reminder: any) => {
+      const reminderEvents = reminders.flatMap((reminder) => {
         const startAt = new Date(reminder.start_at)
         if (Number.isNaN(startAt.getTime())) return []
         const recurrence = String(reminder.recurrence ?? "none")
         return buildOccurrences(startAt, recurrence, rangeStart, rangeEnd).map(
           (date) => ({
-            reminder,
-            date,
+            date: date.toISOString(),
+            colorClass:
+              colorMap[String(reminder.color ?? "chart-1")] ?? "bg-chart-1",
           })
         )
       })
 
-      setReminderEvents(
-        occurrences.map((entry) => ({
-          date: entry.date.toISOString(),
-          colorClass:
-            colorMap[String(entry.reminder.color ?? "chart-1")] ??
-            "bg-chart-1",
-        }))
-      )
-
-      setReminderTasks(
-        occurrences.map((entry) => {
-          const recurrenceKey = String(entry.reminder.recurrence ?? "none")
-          return {
-            id: `reminder-${entry.reminder.id}-${entry.date.toISOString()}`,
-            title: entry.reminder.title,
-            type: recurrenceLabels[recurrenceKey] ?? "Reminder",
-            time: format(entry.date, "EEE • h:mm a"),
-            color:
-              colorMap[String(entry.reminder.color ?? "chart-1")] ??
-              "bg-chart-1",
-            date: entry.date.toISOString(),
-          }
-        })
-      )
-    }
-
-    loadReminders()
-  }, [weekStart])
-
-  const mergedEvents = useMemo(
-    () => [...events, ...reminderEvents],
-    [events, reminderEvents]
+      return [...events, ...reminderEvents]
+    },
+    [events, reminders, weekStart]
   )
   const mergedTasks = useMemo(() => {
+    const rangeStart = startOfWeek(weekStart, { weekStartsOn: 1 })
+    const rangeEnd = endOfWeek(weekStart, { weekStartsOn: 1 })
+    const colorMap: Record<string, string> = {
+      "chart-1": "bg-chart-1",
+      "chart-2": "bg-chart-2",
+      "chart-3": "bg-chart-3",
+      "chart-4": "bg-chart-4",
+      "chart-5": "bg-chart-5",
+    }
+    const recurrenceLabels: Record<string, string> = {
+      none: "Reminder",
+      weekly: "Weekly reminder",
+      biweekly: "Bi-weekly reminder",
+      monthly: "Monthly reminder",
+      quarterly: "Quarterly reminder",
+    }
     const merged = new Map<string, UpcomingTask>()
     taskItems.forEach((item) => merged.set(item.id, item))
-    reminderTasks.forEach((item) => merged.set(item.id, item))
+    reminders
+      .flatMap((reminder) => {
+        const startAt = new Date(reminder.start_at)
+        if (Number.isNaN(startAt.getTime())) return []
+        const recurrence = String(reminder.recurrence ?? "none")
+        return buildOccurrences(startAt, recurrence, rangeStart, rangeEnd).map(
+          (date) => ({
+            id: `reminder-${reminder.id}-${date.toISOString()}`,
+            title: reminder.title,
+            type: recurrenceLabels[recurrence] ?? "Reminder",
+            time: format(date, "EEE • h:mm a"),
+            color:
+              colorMap[String(reminder.color ?? "chart-1")] ?? "bg-chart-1",
+            date: date.toISOString(),
+          })
+        )
+      })
+      .forEach((item) => merged.set(item.id, item))
     return Array.from(merged.values())
-  }, [taskItems, reminderTasks])
+  }, [taskItems, reminders, weekStart])
 
   const eventsByDate = useMemo(() => {
     const map = new Map<string, string[]>()

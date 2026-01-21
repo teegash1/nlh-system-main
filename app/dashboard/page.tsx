@@ -8,19 +8,14 @@ import { LowStockAlert } from "@/components/dashboard/low-stock-alert"
 import { CalendarWidget } from "@/components/dashboard/calendar-widget"
 import { Package, TrendingUp, DollarSign, AlertTriangle } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import {
-  addMonths,
   addWeeks,
   differenceInCalendarDays,
-  differenceInCalendarMonths,
-  differenceInCalendarWeeks,
   endOfMonth,
   endOfWeek,
   format,
   formatDistanceToNow,
-  isAfter,
-  isBefore,
-  isWithinInterval,
   parseISO,
   startOfMonth,
   startOfWeek,
@@ -59,71 +54,6 @@ const colorClassMap: Record<string, string> = {
   "chart-3": "bg-chart-3",
   "chart-4": "bg-chart-4",
   "chart-5": "bg-chart-5",
-}
-
-const recurrenceLabels: Record<string, string> = {
-  none: "Reminder",
-  weekly: "Weekly reminder",
-  biweekly: "Bi-weekly reminder",
-  monthly: "Monthly reminder",
-  quarterly: "Quarterly reminder",
-}
-
-const buildOccurrences = (
-  reminder: ReminderRow,
-  rangeStart: Date,
-  rangeEnd: Date
-) => {
-  const startAt = new Date(reminder.start_at)
-  if (Number.isNaN(startAt.getTime())) return []
-
-  const recurrence = reminder.recurrence ?? "none"
-  if (recurrence === "none") {
-    return isWithinInterval(startAt, { start: rangeStart, end: rangeEnd })
-      ? [startAt]
-      : []
-  }
-
-  const occurrences: Date[] = []
-  if (recurrence === "weekly" || recurrence === "biweekly") {
-    const interval = recurrence === "weekly" ? 1 : 2
-    let occurrence = startAt
-    if (isBefore(occurrence, rangeStart)) {
-      const diffWeeks = differenceInCalendarWeeks(rangeStart, occurrence, {
-        weekStartsOn: 1,
-      })
-      const steps = Math.floor(diffWeeks / interval) * interval
-      occurrence = addWeeks(occurrence, steps)
-      while (isBefore(occurrence, rangeStart)) {
-        occurrence = addWeeks(occurrence, interval)
-      }
-    }
-    while (!isAfter(occurrence, rangeEnd)) {
-      occurrences.push(occurrence)
-      occurrence = addWeeks(occurrence, interval)
-    }
-    return occurrences
-  }
-
-  if (recurrence === "monthly" || recurrence === "quarterly") {
-    const interval = recurrence === "monthly" ? 1 : 3
-    let occurrence = startAt
-    if (isBefore(occurrence, rangeStart)) {
-      const diffMonths = differenceInCalendarMonths(rangeStart, occurrence)
-      const steps = Math.floor(diffMonths / interval) * interval
-      occurrence = addMonths(occurrence, steps)
-      while (isBefore(occurrence, rangeStart)) {
-        occurrence = addMonths(occurrence, interval)
-      }
-    }
-    while (!isAfter(occurrence, rangeEnd)) {
-      occurrences.push(occurrence)
-      occurrence = addMonths(occurrence, interval)
-    }
-    return occurrences
-  }
-
-  return []
 }
 
 export default async function DashboardPage() {
@@ -187,6 +117,7 @@ export default async function DashboardPage() {
     receipt_date: string
     status: string
   }> = []
+  let reminders: ReminderRow[] = []
 
   if (userId) {
     const { data: receiptsData, error: receiptsError } = await supabase
@@ -423,9 +354,15 @@ export default async function DashboardPage() {
 
   const calendarCounts = (countRows ?? []).map((row) => String(row.count_date))
 
-  let reminders: ReminderRow[] = []
   if (userId) {
-    const { data: reminderRows, error: reminderError } = await supabase
+    let reminderClient = supabase
+    try {
+      reminderClient = createAdminClient()
+    } catch {
+      reminderClient = supabase
+    }
+
+    const { data: reminderRows, error: reminderError } = await reminderClient
       .from("reminders")
       .select("id, title, notes, start_at, recurrence, color")
       .eq("user_id", userId)
@@ -434,13 +371,6 @@ export default async function DashboardPage() {
     if (reminderError) throw new Error(reminderError.message)
     reminders = (reminderRows ?? []) as ReminderRow[]
   }
-
-  const reminderOccurrences = reminders.flatMap((reminder) =>
-    buildOccurrences(reminder, calendarStart, calendarEnd).map((date) => ({
-      reminder,
-      date,
-    }))
-  )
 
   const calendarEvents = [
     ...calendarReceipts.map((date) => ({
@@ -451,32 +381,9 @@ export default async function DashboardPage() {
       date,
       colorClass: "bg-chart-1",
     })),
-    ...reminderOccurrences.map((entry) => ({
-      date: entry.date.toISOString(),
-      colorClass:
-        colorClassMap[entry.reminder.color ?? "chart-1"] ?? "bg-chart-1",
-    })),
   ]
 
-  const reminderTasks = reminderOccurrences
-    .slice()
-    .sort((a, b) => a.date.getTime() - b.date.getTime())
-    .map((entry) => {
-    const recurrenceKey = entry.reminder.recurrence ?? "none"
-    const label = recurrenceLabels[recurrenceKey] ?? "Reminder"
-    const timeLabel = format(entry.date, "EEE • h:mm a")
-    return {
-      id: `reminder-${entry.reminder.id}-${entry.date.toISOString()}`,
-      title: entry.reminder.title,
-      type: label,
-      time: timeLabel,
-      color: colorClassMap[entry.reminder.color ?? "chart-1"] ?? "bg-chart-1",
-      date: entry.date.toISOString(),
-    }
-  })
-
   const upcomingTasks = [
-    ...reminderTasks,
     ...(lowStockItems.length > 0
       ? [
           {
@@ -596,6 +503,7 @@ export default async function DashboardPage() {
               events={calendarEvents}
               upcomingTasks={upcomingTasks}
               initialWeekStart={startOfWeek(now, { weekStartsOn: 1 })}
+              reminders={reminders}
             />
             <LowStockAlert items={lowStockItems} />
             <ActivityFeed activities={activities} />

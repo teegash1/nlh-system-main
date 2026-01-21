@@ -41,14 +41,14 @@ export function StatCard({
             </span>
             {(change !== undefined || changeLabel) && (
               <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                <div className={cn("flex items-center gap-0.5", trendColor)}>
-                  <TrendIcon className="h-3.5 w-3.5" />
-                  {change !== undefined && (
+                {change !== undefined && (
+                  <div className={cn("flex items-center gap-0.5", trendColor)}>
+                    <TrendIcon className="h-3.5 w-3.5" />
                     <span className="text-[10px] font-medium sm:text-xs">
                       {change > 0 ? "+" : ""}{change}%
                     </span>
-                  )}
-                </div>
+                  </div>
+                )}
                 {changeLabel && (
                   <span className="text-[10px] text-muted-foreground sm:text-xs">
                     {changeLabel}
