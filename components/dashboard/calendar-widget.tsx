@@ -34,7 +34,11 @@ const addDaysUtc = (date: Date, daysToAdd: number) =>
     Date.UTC(
       date.getUTCFullYear(),
       date.getUTCMonth(),
-      date.getUTCDate() + daysToAdd
+      date.getUTCDate() + daysToAdd,
+      date.getUTCHours(),
+      date.getUTCMinutes(),
+      date.getUTCSeconds(),
+      date.getUTCMilliseconds()
     )
   )
 
@@ -46,7 +50,11 @@ const addMonthsUtc = (date: Date, monthsToAdd: number) =>
     Date.UTC(
       date.getUTCFullYear(),
       date.getUTCMonth() + monthsToAdd,
-      date.getUTCDate()
+      date.getUTCDate(),
+      date.getUTCHours(),
+      date.getUTCMinutes(),
+      date.getUTCSeconds(),
+      date.getUTCMilliseconds()
     )
   )
 
