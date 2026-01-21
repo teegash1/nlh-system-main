@@ -65,7 +65,7 @@ export function ReceiptsExportButton({ receipts }: ReceiptsExportButtonProps) {
       size="sm"
       onClick={handleExport}
       disabled={receipts.length === 0}
-      className="h-8 border-border px-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent bg-transparent"
+      className="h-7 border-border px-2 text-[10px] text-muted-foreground hover:text-foreground hover:bg-accent bg-transparent sm:h-8 sm:text-[11px]"
     >
       <Receipt className="mr-2 h-4 w-4" />
       Export CSV

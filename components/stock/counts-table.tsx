@@ -71,13 +71,13 @@ export function CountsTable({ counts }: CountsTableProps) {
 
           return (
             <div key={count.id} className="px-4 py-3 text-sm">
-              <div className="rounded-lg border border-border/60 bg-secondary/10 p-3 md:hidden">
-                <div className="flex items-start justify-between gap-3">
+              <div className="rounded-lg border border-border/60 bg-secondary/10 p-2.5 md:hidden">
+                <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                       Item
                     </p>
-                    <p className="text-base font-semibold text-foreground">
+                    <p className="text-sm font-semibold text-foreground">
                       {count.itemName}
                     </p>
                     <p className="text-[11px] text-muted-foreground">
@@ -88,12 +88,12 @@ export function CountsTable({ counts }: CountsTableProps) {
                     <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                       Date
                     </p>
-                    <p className="text-base font-semibold text-foreground">
+                    <p className="text-sm font-semibold text-foreground">
                       {count.countDate}
                     </p>
                   </div>
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                <div className="mt-2.5 grid grid-cols-2 gap-2 text-[11px]">
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                       Raw Count
@@ -107,7 +107,7 @@ export function CountsTable({ counts }: CountsTableProps) {
                     <p className="text-foreground">{count.qtyNumeric ?? "—"}</p>
                   </div>
                 </div>
-                <div className="mt-3">{actions}</div>
+                <div className="mt-2.5">{actions}</div>
               </div>
 
               <div className="hidden md:grid md:grid-cols-[1.4fr_1fr_1.4fr_120px_140px] md:items-center md:gap-3">

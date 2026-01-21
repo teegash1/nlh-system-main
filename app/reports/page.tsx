@@ -322,7 +322,7 @@ export default async function ReportsPage() {
               {reports.map((report) => (
                 <div
                   key={report.id}
-                  className="flex items-center gap-4 p-4 rounded-xl bg-secondary/30 border border-border hover:border-accent transition-colors"
+                  className="flex flex-col gap-3 rounded-xl bg-secondary/30 border border-border p-3 hover:border-accent transition-colors sm:flex-row sm:items-center sm:gap-4 sm:p-4"
                 >
                   <div className={`flex items-center justify-center w-12 h-12 rounded-xl bg-${report.color}/20`}>
                     <report.icon className={`h-6 w-6 text-${report.color}`} />
@@ -337,10 +337,12 @@ export default async function ReportsPage() {
                       <span className="text-[10px] text-muted-foreground">{report.date}</span>
                     </div>
                   </div>
-                  <ReportExportMenu
-                    reportType={report.reportType}
-                    reportTitle={report.title}
-                  />
+                  <div className="self-end sm:self-auto sm:ml-auto">
+                    <ReportExportMenu
+                      reportType={report.reportType}
+                      reportTitle={report.title}
+                    />
+                  </div>
                 </div>
               ))}
             </div>

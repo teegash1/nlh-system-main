@@ -82,13 +82,13 @@ export function ItemsTable({ items, categories }: ItemsTableProps) {
 
           return (
             <div key={item.id} className="px-4 py-3 text-sm">
-              <div className="rounded-lg border border-border/60 bg-secondary/10 p-3 md:hidden">
-                <div className="flex items-start justify-between gap-3">
+              <div className="rounded-lg border border-border/60 bg-secondary/10 p-2.5 md:hidden">
+                <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                       Item
                     </p>
-                    <p className="text-base font-semibold text-foreground">
+                    <p className="text-sm font-semibold text-foreground">
                       {item.name}
                     </p>
                     <p className="text-[11px] text-muted-foreground">
@@ -99,12 +99,12 @@ export function ItemsTable({ items, categories }: ItemsTableProps) {
                     <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                       Latest
                     </p>
-                    <p className="text-base font-semibold text-foreground">
+                    <p className="text-sm font-semibold text-foreground">
                       {item.latestCount}
                     </p>
                   </div>
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                <div className="mt-2.5 grid grid-cols-2 gap-2 text-[11px]">
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                       Category
@@ -124,7 +124,7 @@ export function ItemsTable({ items, categories }: ItemsTableProps) {
                     <p className="text-foreground">{item.reorderLevel ?? "—"}</p>
                   </div>
                 </div>
-                <div className="mt-3">{actions}</div>
+                <div className="mt-2.5">{actions}</div>
               </div>
 
               <div className="hidden md:grid md:grid-cols-[1.4fr_1fr_100px_120px_120px_150px] md:items-center md:gap-3">

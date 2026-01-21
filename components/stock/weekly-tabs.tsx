@@ -321,20 +321,22 @@ export function WeeklyTabs({ tabs, data }: WeeklyTabsProps) {
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <TabsList className="bg-transparent h-auto p-0 gap-0">
+        <TabsList className="flex w-full flex-wrap gap-2 bg-transparent h-auto p-0">
           {tabs.map((tab) => (
             <TabsTrigger
               key={tab.id}
               value={tab.id}
               className={cn(
-                "relative h-12 px-6 rounded-none border-b-2 border-transparent",
-                "data-[state=active]:border-chart-1 data-[state=active]:bg-transparent",
+                "flex-1 min-w-[120px] rounded-lg border border-border/60 px-3 py-2 text-xs",
+                "data-[state=active]:border-chart-1 data-[state=active]:bg-secondary/20",
                 "data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground",
-                "hover:text-foreground transition-colors"
+                "hover:text-foreground transition-colors",
+                "sm:relative sm:min-w-0 sm:flex-none sm:h-12 sm:rounded-none sm:border-0 sm:border-b-2 sm:border-transparent sm:px-6 sm:py-0",
+                "sm:data-[state=active]:border-chart-1 sm:data-[state=active]:bg-transparent"
               )}
             >
               <div className="flex flex-col items-center">
-                <span className="text-sm font-medium">{tab.label}</span>
+                <span className="text-xs font-medium sm:text-sm">{tab.label}</span>
                 <span className="text-[10px] text-muted-foreground">
                   {tab.dateRange}
                 </span>

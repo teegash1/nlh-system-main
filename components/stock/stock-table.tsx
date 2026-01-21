@@ -156,18 +156,18 @@ export function StockTable({
 
       <div className="border border-border rounded-xl overflow-hidden">
         <div className="max-h-[70vh] overflow-y-auto md:hidden">
-          <div className="space-y-3 p-3">
+          <div className="space-y-3 p-2.5">
             {sortedData.map((item) => (
               <div
                 key={item.id}
-                className="rounded-lg border border-border/60 bg-secondary/10 p-3"
+                className="rounded-lg border border-border/60 bg-secondary/10 p-2.5"
               >
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                       Item
                     </p>
-                    <p className="text-base font-semibold text-foreground">
+                    <p className="text-sm font-semibold text-foreground">
                       {item.item}
                     </p>
                     <p className="text-[11px] text-muted-foreground">
@@ -181,7 +181,7 @@ export function StockTable({
                     {getStatusBadge(item.status)}
                   </div>
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                <div className="mt-2.5 grid grid-cols-2 gap-2 text-[11px]">
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                       Unit
@@ -195,7 +195,7 @@ export function StockTable({
                     <p className="text-foreground">{item.reorderLevel ?? "—"}</p>
                   </div>
                 </div>
-                <div className="mt-3 space-y-2 text-xs">
+                <div className="mt-2.5 space-y-1.5 text-[11px]">
                   {weeks.map((week) => (
                     <div key={week} className="flex items-center justify-between gap-2">
                       <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -208,7 +208,7 @@ export function StockTable({
                   ))}
                 </div>
                 {showActions && (
-                  <div className="mt-3 flex justify-end">
+                  <div className="mt-2.5 flex justify-end">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
