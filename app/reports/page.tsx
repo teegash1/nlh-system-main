@@ -185,10 +185,6 @@ export default async function ReportsPage() {
       )
       .order("receipt_date", { ascending: false })
 
-    if (!adminClient) {
-      receiptsQuery.eq("user_id", userId)
-    }
-
     const { data, error } = await receiptsQuery
 
     if (error) {

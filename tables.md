@@ -134,11 +134,12 @@ using (auth.uid() = id);
 
 alter table public.receipts enable row level security;
 
-create policy "Receipts are readable by owner"
+drop policy if exists "Receipts are readable by owner" on public.receipts;
+create policy "Receipts are readable by authenticated"
 on public.receipts
 for select
 to authenticated
-using (auth.uid() = user_id);
+using (true);
 
 create policy "Receipts are insertable by owner"
 on public.receipts
@@ -181,14 +182,12 @@ with check (
 );
 
 -- Storage policies (bucket: receipts)
-create policy "Receipts files read by owner"
+drop policy if exists "Receipts files read by owner" on storage.objects;
+create policy "Receipts files read by authenticated"
 on storage.objects
 for select
 to authenticated
-using (
-  bucket_id = 'receipts'
-  and auth.uid()::text = split_part(name, '/', 1)
-);
+using (bucket_id = 'receipts');
 
 create policy "Receipts files uploaded by owner"
 on storage.objects
