@@ -10,6 +10,7 @@ import {
   formatDistanceToNow,
   isAfter,
   isBefore,
+  isSameDay,
   parseISO,
 } from "date-fns"
 
@@ -174,7 +175,7 @@ export function useNotifications() {
           if (Number.isNaN(startAt.getTime())) return null
           const recurrence = String(reminder.recurrence ?? "none")
           const next = getNextOccurrence(startAt, recurrence, now)
-          if (!next) return null
+          if (!next || !isSameDay(next, now)) return null
           return {
             id: `reminder-${reminder.id}`,
             type: "update" as const,
@@ -183,7 +184,7 @@ export function useNotifications() {
               next,
               "EEE, MMM d 'at' h:mm a"
             )}.`,
-            time: formatDistanceToNow(next, { addSuffix: true }),
+            time: "Today",
             href: "/stock",
             read: false,
           }

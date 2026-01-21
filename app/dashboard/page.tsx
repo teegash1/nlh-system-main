@@ -317,6 +317,7 @@ export default async function DashboardPage() {
     unit: string
     category: string
   }>
+  const outOfStockCount = lowStockItems.filter((item) => item.current <= 0).length
 
   const { count: pendingReceiptsCount } = userId
     ? await supabase
@@ -558,7 +559,11 @@ export default async function DashboardPage() {
           <StatCard
             title="Low Stock Items"
             value={lowStockItems.length.toLocaleString()}
-            changeLabel={lowStockItems.length ? "Requires attention" : "All stocked"}
+            changeLabel={
+              lowStockItems.length
+                ? `${outOfStockCount.toLocaleString()} out of stock`
+                : "All stocked"
+            }
             trend="neutral"
             icon={<AlertTriangle className="h-5 w-5 text-chart-3" />}
           />

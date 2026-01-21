@@ -321,7 +321,7 @@ export function WeeklyTabs({ tabs, data }: WeeklyTabsProps) {
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <TabsList className="flex w-full flex-wrap gap-2 bg-transparent h-auto p-0">
+        <TabsList className="flex w-full flex-wrap justify-center gap-2 bg-transparent h-auto p-0 md:w-auto md:justify-start md:flex-nowrap">
           {tabs.map((tab) => (
             <TabsTrigger
               key={tab.id}
@@ -344,7 +344,7 @@ export function WeeklyTabs({ tabs, data }: WeeklyTabsProps) {
             </TabsTrigger>
           ))}
         </TabsList>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 md:flex-nowrap">
           <Button
             variant="outline"
             size="sm"
