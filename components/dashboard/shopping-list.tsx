@@ -578,6 +578,8 @@ export function ShoppingList({
     clone.style.width = `${width}px`
     clone.style.maxHeight = "none"
     clone.style.overflow = "visible"
+    clone.style.pointerEvents = "none"
+    clone.style.zIndex = "-1"
     clone
       .querySelectorAll<HTMLElement>("[data-export-scroll]")
       .forEach((el) => {
@@ -586,13 +588,30 @@ export function ShoppingList({
       })
     document.body.appendChild(clone)
 
-    const dataUrl = await toPng(clone, {
-      pixelRatio: 2,
-      backgroundColor: "#0a0a0b",
-      width: clone.scrollWidth,
-      height: clone.scrollHeight,
-    })
-    document.body.removeChild(clone)
+    await new Promise((resolve) => requestAnimationFrame(resolve))
+    await new Promise((resolve) => requestAnimationFrame(resolve))
+
+    const exportWidth = clone.scrollWidth || Math.ceil(width)
+    const exportHeight = clone.scrollHeight || clone.getBoundingClientRect().height
+
+    let dataUrl = ""
+    try {
+      dataUrl = await toPng(clone, {
+        pixelRatio: 2,
+        backgroundColor: "#0a0a0b",
+        width: exportWidth,
+        height: exportHeight,
+        cacheBust: true,
+      })
+    } catch {
+      dataUrl = await toPng(source, {
+        pixelRatio: 2,
+        backgroundColor: "#0a0a0b",
+        cacheBust: true,
+      })
+    } finally {
+      document.body.removeChild(clone)
+    }
     const link = document.createElement("a")
     link.download = `shopping-list-${new Date().toISOString().slice(0, 10)}.png`
     link.href = dataUrl
