@@ -68,10 +68,11 @@ export function LowStockAlert({ items, viewLink = "/stock" }: LowStockAlertProps
   })
 
   let displayItems: LowStockItem[] = []
-  const outOfStockTop = outOfStock.slice(0, 4)
+  const maxItems = 6
+  const outOfStockTop = outOfStock.slice(0, maxItems)
 
   if (outOfStockTop.length === 0) {
-    displayItems = lowStockSorted.slice(0, 4)
+    displayItems = lowStockSorted.slice(0, maxItems)
   } else if (outOfStockTop.length <= 2) {
     const addCount = Math.min(2, lowStockSorted.length)
     displayItems = [
@@ -80,10 +81,10 @@ export function LowStockAlert({ items, viewLink = "/stock" }: LowStockAlertProps
     ]
   } else {
     displayItems = outOfStockTop
-    if (displayItems.length < 4) {
+    if (displayItems.length < maxItems) {
       displayItems = [
         ...displayItems,
-        ...lowStockSorted.slice(0, 4 - displayItems.length),
+        ...lowStockSorted.slice(0, maxItems - displayItems.length),
       ]
     }
   }
