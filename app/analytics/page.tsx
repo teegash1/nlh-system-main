@@ -1,9 +1,5 @@
 import { AppShell } from "@/components/layout/app-shell"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { StockChart, type StockChartDatum } from "@/components/dashboard/stock-chart"
-import { CategoryChart, type CategoryChartDatum } from "@/components/dashboard/category-chart"
-import { StatCard } from "@/components/dashboard/stat-card"
-import { TrendingUp, TrendingDown, BarChart3, PieChart, Wallet } from "lucide-react"
+import { AnalyticsClientSections } from "@/components/analytics/analytics-client-sections"
 import { createClient } from "@/lib/supabase/server"
 import {
   endOfMonth,
@@ -78,7 +74,7 @@ export default async function AnalyticsPage() {
   const avgChange =
     avgPrev > 0 ? Number((((avgCurrent - avgPrev) / avgPrev) * 100).toFixed(2)) : 0
 
-  const stockChartData: StockChartDatum[] = lastFourMonths.map((date, index) => ({
+  const stockChartData = lastFourMonths.map((date, index) => ({
     month: format(date, "MMM"),
     value: totalsByMonth.get(formatMonthKey(date)) ?? 0,
     highlight: index === lastFourMonths.length - 1,
@@ -125,7 +121,7 @@ export default async function AnalyticsPage() {
 
   const categoryPalette = ["#60a5fa", "#34d399", "#fbbf24", "#a78bfa", "#f87171"]
   const totalItems = items.length
-  const categoryChartData: CategoryChartDatum[] = Array.from(categoryCounts.entries())
+  const categoryChartData = Array.from(categoryCounts.entries())
     .sort((a, b) => b[1] - a[1])
     .map(([name, count], index) => ({
       name,
@@ -260,152 +256,25 @@ export default async function AnalyticsPage() {
     (countDates?.length ?? 0) > 0 ||
     latestReceipt != null
 
-  const emptyValue = "—"
-  const emptyLabel = "No data yet"
-
   return (
     <AppShell title="Analytics" subtitle="Insights and data visualization">
-      <div className="p-4 md:p-6 space-y-6">
-        {/* Page Header - Mobile */}
-        <div className="md:hidden">
-          <h1 className="text-xl font-semibold text-foreground">Analytics</h1>
-          <p className="text-sm text-muted-foreground">
-            Track inventory trends and patterns
-          </p>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          <StatCard
-            title="Avg Monthly Spend"
-            value={
-              hasAnalyticsData
-                ? `KES ${Math.round(avgCurrent).toLocaleString()}`
-                : emptyValue
-            }
-            change={hasAnalyticsData ? avgChange : undefined}
-            changeLabel={hasAnalyticsData ? "vs prev. quarter" : emptyLabel}
-            trend={hasAnalyticsData ? (avgChange >= 0 ? "up" : "down") : "neutral"}
-            icon={<TrendingUp className="h-5 w-5 text-chart-2" />}
-          />
-          <StatCard
-            title="Stock Turnover"
-            value={hasAnalyticsData ? `${turnoverValue.toFixed(1)}x` : emptyValue}
-            change={hasAnalyticsData ? turnoverChange : undefined}
-            changeLabel={hasAnalyticsData ? "improvement" : emptyLabel}
-            trend={hasAnalyticsData ? (turnoverChange >= 0 ? "up" : "down") : "neutral"}
-            icon={<BarChart3 className="h-5 w-5 text-chart-1" />}
-          />
-          <StatCard
-            title="Waste Reduction"
-            value={
-              hasAnalyticsData
-                ? `${Math.abs(Math.round(wasteReduction))}%`
-                : emptyValue
-            }
-            change={hasAnalyticsData ? wasteReduction : undefined}
-            changeLabel={hasAnalyticsData ? "vs last period" : emptyLabel}
-            trend={hasAnalyticsData ? (wasteReduction >= 0 ? "up" : "down") : "neutral"}
-            icon={<TrendingDown className="h-5 w-5 text-chart-4" />}
-          />
-          <StatCard
-            title="Category Balance"
-            value={hasAnalyticsData ? categoryBalance : emptyValue}
-            changeLabel={hasAnalyticsData ? "Optimized" : emptyLabel}
-            trend="neutral"
-            icon={<PieChart className="h-5 w-5 text-chart-5" />}
-          />
-          <StatCard
-            title="Amount at hand"
-            value={
-              hasAnalyticsData && amountAtHand != null
-                ? `KES ${amountAtHand.toLocaleString(undefined, {
-                    maximumFractionDigits: 2,
-                  })}`
-                : emptyValue
-            }
-            changeLabel={hasAnalyticsData ? "Balance after expenses" : emptyLabel}
-            trend="neutral"
-            icon={<Wallet className="h-5 w-5 text-chart-3" />}
-          />
-        </div>
-
-        {/* Charts Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <StockChart
-            data={stockChartData}
-            rangeLabel={spendRangeLabel}
-            totalLabel={`KES ${Math.round(spendTotal).toLocaleString()}`}
-          />
-          <CategoryChart data={categoryChartData} totalCount={totalItems} />
-        </div>
-
-        {/* Additional Analytics */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-base font-semibold text-foreground">
-                Top Consumed Items
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {[
-                  ...topConsumed,
-                ].map((item, index) => (
-                  <div key={index} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-foreground">{item.name}</span>
-                      <span className="text-sm font-medium text-muted-foreground">
-                        {item.consumption}%
-                      </span>
-                    </div>
-                    <div className="h-2 rounded-full bg-secondary overflow-hidden">
-                      <div
-                        className={`h-full rounded-full bg-${item.color}`}
-                        style={{ width: `${item.consumption}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-base font-semibold text-foreground">
-                Monthly Comparison
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {[
-                  ...monthlyComparison,
-                ].map((item, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{item.month}</p>
-                      <p className="text-xs text-muted-foreground">2025/2026</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-foreground">
-                        KES {item.value.toLocaleString()}
-                      </p>
-                      <p className={`text-xs ${item.change > 0 ? "text-chart-2" : "text-chart-4"}`}>
-                        {item.change > 0 ? "+" : ""}{item.change}%
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      <AnalyticsClientSections
+        hasAnalyticsData={hasAnalyticsData}
+        avgCurrent={avgCurrent}
+        avgChange={avgChange}
+        turnoverValue={turnoverValue}
+        turnoverChange={turnoverChange}
+        wasteReduction={wasteReduction}
+        categoryBalance={categoryBalance}
+        amountAtHand={amountAtHand}
+        stockChartData={stockChartData}
+        spendRangeLabel={spendRangeLabel}
+        spendTotal={spendTotal}
+        categoryChartData={categoryChartData}
+        totalItems={totalItems}
+        topConsumed={topConsumed}
+        monthlyComparison={monthlyComparison}
+      />
     </AppShell>
   )
 }

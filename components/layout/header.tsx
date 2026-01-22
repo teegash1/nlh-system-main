@@ -197,19 +197,11 @@ export function Header({ title, subtitle }: HeaderProps) {
           {/* Mobile Logo */}
           <div className="md:hidden flex items-center gap-2">
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-[#2a2a30] to-[#1a1a1e] border border-[#3a3a40]">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                className="w-5 h-5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-              >
-                <path
-                  d="M12 3L20 7.5V16.5L12 21L4 16.5V7.5L12 3Z"
-                  className="stroke-[#a1a1aa]"
-                  strokeLinejoin="round"
-                />
-              </svg>
+              <img
+                src="/fav.png"
+                alt="Nobles Lighthouse"
+                className="h-5 w-5 rounded object-contain"
+              />
             </div>
             <span className="text-sm font-semibold text-foreground">NLH-SYSTEM</span>
           </div>

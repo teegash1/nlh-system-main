@@ -1,5 +1,6 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { useMemo, useRef, useState } from "react"
 import { AppShell } from "@/components/layout/app-shell"
 import { Input } from "@/components/ui/input"
@@ -12,10 +13,9 @@ import { AddCountDialog } from "@/components/stock/add-count-dialog"
 import { CategoryManagerDialog } from "@/components/stock/category-manager-dialog"
 import { ReminderScheduler } from "@/components/stock/reminder-scheduler"
 import { DateFilter } from "@/components/stock/date-filter"
-import { CountsTable, type StockCountRow } from "@/components/stock/counts-table"
-import { ItemsTable, type StockItemRow } from "@/components/stock/items-table"
+import type { StockCountRow } from "@/components/stock/counts-table"
+import type { StockItemRow } from "@/components/stock/items-table"
 import type { StockItem } from "@/components/stock/stock-table"
-import { WeeklyTabs } from "@/components/stock/weekly-tabs"
 import { AlertTriangle, CalendarDays, Layers, ListChecks, Package } from "lucide-react"
 import {
   endOfMonth,
@@ -27,6 +27,43 @@ import {
   startOfYear,
   subMonths,
 } from "date-fns"
+
+const TableSkeleton = ({ rows = 6 }: { rows?: number }) => (
+  <div className="rounded-xl border border-border bg-card p-4 space-y-3 animate-pulse">
+    <div className="h-4 w-32 rounded bg-secondary/70" />
+    {Array.from({ length: rows }).map((_, index) => (
+      <div key={index} className="grid grid-cols-4 gap-3">
+        <div className="h-3 rounded bg-secondary/60 col-span-2" />
+        <div className="h-3 rounded bg-secondary/60" />
+        <div className="h-3 rounded bg-secondary/60" />
+      </div>
+    ))}
+  </div>
+)
+
+const WeeklyTabsSkeleton = () => (
+  <div className="rounded-lg border border-border bg-secondary/30 p-4 space-y-4 animate-pulse">
+    <div className="flex flex-wrap gap-2">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div key={index} className="h-7 w-20 rounded bg-secondary/70" />
+      ))}
+    </div>
+    <div className="h-56 rounded bg-secondary/60" />
+  </div>
+)
+
+const WeeklyTabs = dynamic(
+  () => import("@/components/stock/weekly-tabs").then((mod) => mod.WeeklyTabs),
+  { ssr: false, loading: () => <WeeklyTabsSkeleton /> }
+)
+const ItemsTable = dynamic(
+  () => import("@/components/stock/items-table").then((mod) => mod.ItemsTable),
+  { ssr: false, loading: () => <TableSkeleton rows={8} /> }
+)
+const CountsTable = dynamic(
+  () => import("@/components/stock/counts-table").then((mod) => mod.CountsTable),
+  { ssr: false, loading: () => <TableSkeleton rows={6} /> }
+)
 
 export type StockRow = {
   id: string

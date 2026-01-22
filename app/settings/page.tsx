@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/layout/app-shell"
-import { SettingsClient } from "@/components/settings/settings-client"
+import { SettingsClientWrapper } from "@/components/settings/settings-client-wrapper"
 import { createClient } from "@/lib/supabase/server"
 
 const normalizeRole = (role?: string | null) => {
@@ -44,7 +44,7 @@ export default async function SettingsPage() {
 
   return (
     <AppShell title="Settings" subtitle="Configure your system preferences">
-      <SettingsClient
+      <SettingsClientWrapper
         profile={{
           fullName:
             profile?.full_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "User",

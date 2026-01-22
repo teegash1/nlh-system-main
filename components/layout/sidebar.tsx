@@ -84,23 +84,11 @@ export function Sidebar() {
         )}>
           <Link href="/" className="flex items-center gap-3">
             <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-[#2a2a30] to-[#1a1a1e] border border-[#3a3a40]">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                className="w-6 h-6"
-                stroke="currentColor"
-                strokeWidth="1.5"
-              >
-                <path
-                  d="M12 3L20 7.5V16.5L12 21L4 16.5V7.5L12 3Z"
-                  className="stroke-[#a1a1aa]"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M12 12L12 21M12 12L4 7.5M12 12L20 7.5"
-                  className="stroke-[#71717a]"
-                />
-              </svg>
+              <img
+                src="/fav.png"
+                alt="Nobles Lighthouse"
+                className="h-6 w-6 rounded-md object-contain"
+              />
             </div>
           </Link>
         </div>
