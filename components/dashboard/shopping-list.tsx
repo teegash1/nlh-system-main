@@ -648,25 +648,6 @@ export function ShoppingList({
     link.href = dataUrl
     link.click()
 
-    const preview = window.open("", "_blank", "width=1100,height=900")
-    if (preview) {
-      preview.document.open()
-      preview.document.write(`
-        <html>
-          <head>
-            <title>Shopping List</title>
-            <style>
-              body { margin: 0; background: #0a0a0b; display: flex; align-items: center; justify-content: center; padding: 24px; color: #f4f4f5; font-family: 'Inter', sans-serif; }
-              img { max-width: 100%; height: auto; border-radius: 16px; box-shadow: 0 18px 40px rgba(0,0,0,0.45); }
-            </style>
-          </head>
-          <body>
-            <img src="${dataUrl}" alt="Shopping List Export" />
-          </body>
-        </html>
-      `)
-      preview.document.close()
-    }
   }
 
   return (
