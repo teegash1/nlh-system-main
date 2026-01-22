@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { gsap } from "gsap"
 import { cn } from "@/lib/utils"
 
@@ -34,6 +34,25 @@ export default function BounceCards({
   enableHover = false,
 }: BounceCardsProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const [viewportWidth, setViewportWidth] = useState<number | null>(null)
+
+  useEffect(() => {
+    const updateWidth = () => setViewportWidth(window.innerWidth)
+    updateWidth()
+    window.addEventListener("resize", updateWidth)
+    return () => window.removeEventListener("resize", updateWidth)
+  }, [])
+
+  const isMobile = (viewportWidth ?? containerWidth) < 640
+  const availableWidth = viewportWidth
+    ? Math.max(280, viewportWidth - 48)
+    : containerWidth
+  const effectiveWidth = isMobile
+    ? Math.min(containerWidth, availableWidth)
+    : containerWidth
+  const effectiveHeight = isMobile
+    ? Math.min(containerHeight, Math.round(effectiveWidth * 0.6))
+    : containerHeight
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -51,6 +70,23 @@ export default function BounceCards({
 
     return () => ctx.revert()
   }, [animationStagger, easeType, animationDelay])
+
+  const scaleTransform = (transformStr: string, scale: number) => {
+    const translateRegex = /translate\(([-0-9.]+)px\)/
+    const match = transformStr.match(translateRegex)
+    if (!match) return transformStr
+    const currentX = parseFloat(match[1])
+    const scaledX = Math.round(currentX * scale)
+    return transformStr.replace(translateRegex, `translate(${scaledX}px)`)
+  }
+
+  const activeTransforms = useMemo(() => {
+    if (!isMobile) return transformStyles
+    const scale = containerWidth > 0 ? effectiveWidth / containerWidth : 1
+    return transformStyles.map((transform) =>
+      scaleTransform(transform, scale)
+    )
+  }, [containerWidth, effectiveWidth, isMobile, transformStyles])
 
   const getNoRotationTransform = (transformStr: string): string => {
     const hasRotate = /rotate\([\s\S]*?\)/.test(transformStr)
@@ -83,7 +119,7 @@ export default function BounceCards({
       const selector = q(`.card-${i}`)
       gsap.killTweensOf(selector)
 
-      const baseTransform = transformStyles[i] || "none"
+      const baseTransform = activeTransforms[i] || "none"
 
       if (i === hoveredIdx) {
         const noRotation = getNoRotationTransform(baseTransform)
@@ -116,7 +152,7 @@ export default function BounceCards({
     images.forEach((_, i) => {
       const selector = q(`.card-${i}`)
       gsap.killTweensOf(selector)
-      const baseTransform = transformStyles[i] || "none"
+      const baseTransform = activeTransforms[i] || "none"
       gsap.to(selector, {
         transform: baseTransform,
         duration: 0.4,
@@ -127,9 +163,9 @@ export default function BounceCards({
   }
 
   const cardSize = useMemo(() => {
-    const base = Math.round(containerWidth * 0.4)
+    const base = Math.round(effectiveWidth * 0.4)
     return Math.min(220, Math.max(140, base))
-  }, [containerWidth])
+  }, [effectiveWidth])
 
   return (
     <div
@@ -139,8 +175,8 @@ export default function BounceCards({
       )}
       ref={containerRef}
       style={{
-        width: containerWidth,
-        height: containerHeight,
+        width: effectiveWidth,
+        height: effectiveHeight,
         maxWidth: "100%",
       }}
     >
@@ -154,7 +190,7 @@ export default function BounceCards({
           style={{
             width: cardSize,
             height: cardSize,
-            transform: transformStyles[idx] ?? "none",
+            transform: activeTransforms[idx] ?? "none",
           }}
           onMouseEnter={() => pushSiblings(idx)}
           onMouseLeave={resetSiblings}
