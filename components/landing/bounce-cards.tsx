@@ -200,7 +200,7 @@ export default function BounceCards({
           onMouseLeave={resetSiblings}
         >
           <img
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover saturate-110 contrast-110 brightness-105"
             src={src}
             alt={`card-${idx}`}
             loading="lazy"
