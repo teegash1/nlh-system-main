@@ -465,9 +465,14 @@ export function ShoppingList({
     }))
   }
 
-  const buildExportTemplate = () => {
+  const buildExportTemplate = ({
+    variant = "default",
+  }: {
+    variant?: "default" | "compact"
+  } = {}) => {
     const logoUrl = `${window.location.origin}/fav.png`
     const reportDate = new Date().toLocaleString()
+    const variantClass = variant === "compact" ? "compact" : ""
     const rowsHtml = rows
       .map(
         (row) => `
@@ -505,16 +510,20 @@ export function ShoppingList({
       tbody tr:last-child td { border-bottom: none; }
       .align-right { text-align: right; }
       .footer { margin-top: 18px; color: #71717a; font-size: 11px; }
-      @media (max-width: 640px) {
-        .page { padding: 24px; }
-        .header { flex-direction: column; align-items: flex-start; }
-        .meta { text-align: left; }
-        .summary { grid-template-columns: 1fr; }
-        th:nth-child(6), th:nth-child(7), td:nth-child(6), td:nth-child(7) { display: none; }
-      }
+      .page.compact { padding: 22px; max-width: 920px; }
+      .page.compact h1 { font-size: 18px; }
+      .page.compact .subtitle { font-size: 11px; }
+      .page.compact .meta { font-size: 11px; }
+      .page.compact .logo img { width: 34px; height: 34px; border-radius: 10px; }
+      .page.compact .summary { gap: 8px; margin: 16px 0; }
+      .page.compact .card { padding: 10px; border-radius: 12px; }
+      .page.compact .card span { font-size: 10px; letter-spacing: .12em; }
+      .page.compact .card strong { font-size: 16px; }
+      .page.compact th, .page.compact td { padding: 8px 10px; font-size: 11px; }
+      .page.compact th { font-size: 10px; letter-spacing: .1em; }
     `
     const body = `
-      <div class="page">
+      <div id="export-root" class="page ${variantClass}">
         <div class="header">
           <div class="logo">
             <img src="${logoUrl}" alt="Nobles Lighthouse" />
@@ -582,10 +591,15 @@ export function ShoppingList({
   }
 
   const handleExportImage = async () => {
-    const { styles, body } = buildExportTemplate()
+    const isMobile = window.innerWidth < 768
+    const { styles, body } = buildExportTemplate({
+      variant: isMobile ? "compact" : "default",
+    })
     const exportRoot = document.createElement("div")
     const baseWidth = captureRef.current?.getBoundingClientRect().width ?? 980
-    const exportWidth = Math.min(1100, Math.max(360, Math.round(baseWidth)))
+    const exportWidth = isMobile
+      ? 900
+      : Math.min(1100, Math.max(760, Math.round(baseWidth)))
 
     exportRoot.style.position = "fixed"
     exportRoot.style.left = "0"
