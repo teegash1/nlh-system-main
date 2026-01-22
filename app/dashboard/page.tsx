@@ -1,58 +1,6 @@
 import { AppShell } from "@/components/layout/app-shell"
 import { StatCard } from "@/components/dashboard/stat-card"
-import dynamic from "next/dynamic"
-import {
-  ActivityFeedSkeleton,
-  CalendarWidgetSkeleton,
-  CategoryChartSkeleton,
-  LowStockAlertSkeleton,
-  ShoppingListSkeleton,
-  StockChartSkeleton,
-  TaskSummarySkeleton,
-} from "@/components/dashboard/dashboard-skeletons"
-const StockChart = dynamic(
-  () => import("@/components/dashboard/stock-chart").then((mod) => mod.StockChart),
-  { ssr: false, loading: () => <StockChartSkeleton /> }
-)
-const CategoryChart = dynamic(
-  () =>
-    import("@/components/dashboard/category-chart").then(
-      (mod) => mod.CategoryChart
-    ),
-  { ssr: false, loading: () => <CategoryChartSkeleton /> }
-)
-const TaskSummary = dynamic(
-  () => import("@/components/dashboard/task-summary").then((mod) => mod.TaskSummary),
-  { ssr: false, loading: () => <TaskSummarySkeleton /> }
-)
-const CalendarWidget = dynamic(
-  () =>
-    import("@/components/dashboard/calendar-widget").then(
-      (mod) => mod.CalendarWidget
-    ),
-  { ssr: false, loading: () => <CalendarWidgetSkeleton /> }
-)
-const LowStockAlert = dynamic(
-  () =>
-    import("@/components/dashboard/low-stock-alert").then(
-      (mod) => mod.LowStockAlert
-    ),
-  { ssr: false, loading: () => <LowStockAlertSkeleton /> }
-)
-const ActivityFeed = dynamic(
-  () =>
-    import("@/components/dashboard/activity-feed").then(
-      (mod) => mod.ActivityFeed
-    ),
-  { ssr: false, loading: () => <ActivityFeedSkeleton /> }
-)
-const ShoppingList = dynamic(
-  () =>
-    import("@/components/dashboard/shopping-list").then(
-      (mod) => mod.ShoppingList
-    ),
-  { ssr: false, loading: () => <ShoppingListSkeleton /> }
-)
+import { DashboardClientSections } from "@/components/dashboard/dashboard-client-sections"
 import { Package, TrendingUp, DollarSign, AlertTriangle } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -101,14 +49,6 @@ type ShoppingListOverride = {
   unit_price: number | null
   notes?: string | null
   excluded?: boolean | null
-}
-
-const colorClassMap: Record<string, string> = {
-  "chart-1": "bg-chart-1",
-  "chart-2": "bg-chart-2",
-  "chart-3": "bg-chart-3",
-  "chart-4": "bg-chart-4",
-  "chart-5": "bg-chart-5",
 }
 
 export default async function DashboardPage() {
@@ -217,6 +157,9 @@ export default async function DashboardPage() {
     lastFourMonths[lastFourMonths.length - 1],
     "MMM yyyy"
   )}`
+  const stockChartTotal = `KES ${Math.round(
+    stockChartData.reduce((sum, row) => sum + row.value, 0)
+  ).toLocaleString()}`
 
   let stockValue = 0
   let stockValuePrev = 0
@@ -617,48 +560,31 @@ export default async function DashboardPage() {
           />
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Charts */}
-          <div className="lg:col-span-2 space-y-6">
-            <StockChart
-              data={stockChartData}
-              rangeLabel={stockChartRange}
-              totalLabel={`KES ${Math.round(stockChartData.reduce((sum, row) => sum + row.value, 0)).toLocaleString()}`}
-            />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <CategoryChart data={categoryChartData} totalCount={totalItems} />
-              <TaskSummary
-                pending={pendingCounts}
-                inProgress={inProgressCounts}
-                completed={completedCounts}
-                completionRate={completionRate}
-              />
-            </div>
-            <ShoppingList
-              items={shoppingListItems}
-              overrides={shoppingOverrides}
-              catalogItems={catalogItems}
-            />
-          </div>
-
-          {/* Right Column - Sidebar Content */}
-          <div className="space-y-6">
-            <CalendarWidget
-              todayLabel={`Today, ${now.toLocaleDateString("en-US", {
-                timeZone: "UTC",
-                day: "numeric",
-                month: "long",
-              })}`}
-              events={calendarEvents}
-              upcomingTasks={upcomingTasks}
-              initialWeekStart={new Date()}
-              reminders={reminders}
-            />
-            <LowStockAlert items={lowStockItems} />
-            <ActivityFeed activities={activities} />
-          </div>
-        </div>
+        <DashboardClientSections
+          stockChartData={stockChartData}
+          stockChartRange={stockChartRange}
+          stockChartTotal={stockChartTotal}
+          categoryChartData={categoryChartData}
+          totalItems={totalItems}
+          pendingCounts={pendingCounts}
+          inProgressCounts={inProgressCounts}
+          completedCounts={completedCounts}
+          completionRate={completionRate}
+          calendarLabel={`Today, ${now.toLocaleDateString("en-US", {
+            timeZone: "UTC",
+            day: "numeric",
+            month: "long",
+          })}`}
+          calendarEvents={calendarEvents}
+          upcomingTasks={upcomingTasks}
+          initialWeekStartIso={now.toISOString()}
+          reminders={reminders}
+          lowStockItems={lowStockItems}
+          activities={activities}
+          shoppingListItems={shoppingListItems}
+          shoppingOverrides={shoppingOverrides}
+          catalogItems={catalogItems}
+        />
       </div>
     </AppShell>
   )
