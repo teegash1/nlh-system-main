@@ -6,11 +6,13 @@ export default function Loading() {
           <div className="absolute inset-0 rounded-full border border-border/60 bg-gradient-to-br from-chart-1/20 via-transparent to-chart-2/20" />
           <div className="absolute inset-2 rounded-full border border-border/40 bg-secondary/40 animate-pulse" />
           <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-chart-1 border-r-chart-2 animate-spin" />
-          <img
-            src="/fav.png"
-            alt="Nobles Lighthouse"
-            className="absolute inset-3 rounded-full object-cover"
-          />
+          <div className="absolute inset-3 flex items-center justify-center">
+            <img
+              src="/fav.png"
+              alt="Nobles Lighthouse"
+              className="h-full w-full rounded-full object-contain"
+            />
+          </div>
         </div>
         <div className="text-center">
           <p className="text-sm font-semibold text-foreground">

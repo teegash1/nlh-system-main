@@ -465,7 +465,7 @@ export function ShoppingList({
     }))
   }
 
-  const handleExportPdf = () => {
+  const buildExportTemplate = () => {
     const logoUrl = `${window.location.origin}/fav.png`
     const reportDate = new Date().toLocaleString()
     const rowsHtml = rows
@@ -476,84 +476,86 @@ export function ShoppingList({
           <td>${escapeHtml(row.category)}</td>
           <td>${escapeHtml(row.status)}</td>
           <td>${escapeHtml(`${row.current} ${row.unit}`)}</td>
-          <td class="align-right">${escapeHtml(
-            currency.format(row.qtyValue)
-          )}</td>
-          <td class="align-right">${escapeHtml(
-            currency.format(row.priceValue)
-          )}</td>
-          <td class="align-right">${escapeHtml(
-            currency.format(row.amount)
-          )}</td>
+          <td class="align-right">${escapeHtml(currency.format(row.qtyValue))}</td>
+          <td class="align-right">${escapeHtml(currency.format(row.priceValue))}</td>
+          <td class="align-right">${escapeHtml(currency.format(row.amount))}</td>
         </tr>
       `
       )
       .join("")
+    const styles = `
+      * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
+      body { margin: 0; background: #0a0a0b; color: #f4f4f5; }
+      .page { padding: 32px; }
+      .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2a2a2f; padding-bottom: 16px; }
+      .logo { display: flex; gap: 12px; align-items: center; }
+      .logo img { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; }
+      h1 { margin: 0; font-size: 20px; }
+      .subtitle { margin-top: 4px; font-size: 12px; color: #a1a1aa; }
+      .meta { text-align: right; font-size: 12px; color: #a1a1aa; }
+      .summary { margin: 20px 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+      .card { border: 1px solid #2a2a2f; background: #141418; padding: 12px; border-radius: 12px; }
+      .card span { display: block; font-size: 11px; color: #a1a1aa; text-transform: uppercase; letter-spacing: .1em; }
+      .card strong { font-size: 18px; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: 10px 12px; border-bottom: 1px solid #242428; font-size: 12px; text-align: left; }
+      th { font-size: 11px; color: #a1a1aa; text-transform: uppercase; letter-spacing: .08em; }
+      .align-right { text-align: right; }
+      .footer { margin-top: 18px; color: #71717a; font-size: 11px; }
+    `
+    const body = `
+      <div class="page">
+        <div class="header">
+          <div class="logo">
+            <img src="${logoUrl}" alt="Nobles Lighthouse" />
+            <div>
+              <h1>Nobles Lighthouse</h1>
+              <div class="subtitle">Shopping List Export</div>
+            </div>
+          </div>
+          <div class="meta">
+            <div>Total items: ${rows.length}</div>
+            <div>Total spend: ${formatKes(total)}</div>
+            <div>Generated: ${escapeHtml(reportDate)}</div>
+          </div>
+        </div>
+        <div class="summary">
+          <div class="card"><span>Out of stock</span><strong>${rows.filter((r) => r.current <= 0).length}</strong></div>
+          <div class="card"><span>Low stock</span><strong>${rows.filter((r) => r.current > 0).length}</strong></div>
+          <div class="card"><span>Estimated total</span><strong>${formatKes(total)}</strong></div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Category</th>
+              <th>Status</th>
+              <th>Current</th>
+              <th class="align-right">Qty to Buy</th>
+              <th class="align-right">Unit Price</th>
+              <th class="align-right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml || "<tr><td colspan='7'>No items to purchase.</td></tr>"}
+          </tbody>
+        </table>
+        <div class="footer">Generated ${escapeHtml(reportDate)}</div>
+      </div>
+    `
+    return { styles, body }
+  }
 
+  const handleExportPdf = () => {
+    const { styles, body } = buildExportTemplate()
     const html = `
       <html>
         <head>
           <title>Shopping List</title>
-          <style>
-            * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
-            body { margin: 0; background: #0a0a0b; color: #f4f4f5; }
-            .page { padding: 32px; }
-            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2a2a2f; padding-bottom: 16px; }
-            .logo { display: flex; gap: 12px; align-items: center; }
-            .logo img { width: 40px; height: 40px; border-radius: 10px; }
-            h1 { margin: 0; font-size: 20px; }
-            .subtitle { margin-top: 4px; font-size: 12px; color: #a1a1aa; }
-            .meta { text-align: right; font-size: 12px; color: #a1a1aa; }
-            .summary { margin: 20px 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-            .card { border: 1px solid #2a2a2f; background: #141418; padding: 12px; border-radius: 12px; }
-            .card span { display: block; font-size: 11px; color: #a1a1aa; text-transform: uppercase; letter-spacing: .1em; }
-            .card strong { font-size: 18px; }
-            table { width: 100%; border-collapse: collapse; }
-            th, td { padding: 10px 12px; border-bottom: 1px solid #242428; font-size: 12px; text-align: left; }
-            th { font-size: 11px; color: #a1a1aa; text-transform: uppercase; letter-spacing: .08em; }
-            .align-right { text-align: right; }
-            .footer { margin-top: 18px; color: #71717a; font-size: 11px; }
-          </style>
+          <style>${styles}</style>
         </head>
         <body>
-          <div class="page">
-            <div class="header">
-              <div class="logo">
-                <img src="${logoUrl}" alt="Nobles Lighthouse" />
-                <div>
-                  <h1>Nobles Lighthouse</h1>
-                  <div class="subtitle">Shopping List Export</div>
-                </div>
-              </div>
-              <div class="meta">
-                <div>Total items: ${rows.length}</div>
-                <div>Total spend: ${formatKes(total)}</div>
-                <div>Generated: ${escapeHtml(reportDate)}</div>
-              </div>
-            </div>
-            <div class="summary">
-              <div class="card"><span>Out of stock</span><strong>${rows.filter((r) => r.current <= 0).length}</strong></div>
-              <div class="card"><span>Low stock</span><strong>${rows.filter((r) => r.current > 0).length}</strong></div>
-              <div class="card"><span>Estimated total</span><strong>${formatKes(total)}</strong></div>
-            </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Item</th>
-                  <th>Category</th>
-                  <th>Status</th>
-                  <th>Current</th>
-                  <th class="align-right">Qty to Buy</th>
-                  <th class="align-right">Unit Price</th>
-                  <th class="align-right">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${rowsHtml || "<tr><td colspan='7'>No items to purchase.</td></tr>"}
-              </tbody>
-            </table>
-            <div class="footer">Generated ${escapeHtml(reportDate)}</div>
-          </div>
+          ${body}
         </body>
       </html>
     `
@@ -568,49 +570,41 @@ export function ShoppingList({
   }
 
   const handleExportImage = async () => {
-    if (!captureRef.current) return
-    const source = captureRef.current
-    const clone = source.cloneNode(true) as HTMLElement
-    const { width } = source.getBoundingClientRect()
-    clone.style.position = "fixed"
-    clone.style.left = "-9999px"
-    clone.style.top = "0"
-    clone.style.width = `${width}px`
-    clone.style.maxHeight = "none"
-    clone.style.overflow = "visible"
-    clone.style.pointerEvents = "none"
-    clone.style.zIndex = "-1"
-    clone
-      .querySelectorAll<HTMLElement>("[data-export-scroll]")
-      .forEach((el) => {
-        el.style.maxHeight = "none"
-        el.style.overflow = "visible"
+    const { styles, body } = buildExportTemplate()
+    const exportRoot = document.createElement("div")
+    const baseWidth = captureRef.current?.getBoundingClientRect().width ?? 980
+    const exportWidth = Math.min(1100, Math.max(820, Math.round(baseWidth)))
+
+    exportRoot.style.position = "fixed"
+    exportRoot.style.left = "-9999px"
+    exportRoot.style.top = "0"
+    exportRoot.style.width = `${exportWidth}px`
+    exportRoot.style.background = "#0a0a0b"
+    exportRoot.style.color = "#f4f4f5"
+    exportRoot.style.pointerEvents = "none"
+    exportRoot.style.zIndex = "-1"
+    exportRoot.innerHTML = `<style>${styles}</style>${body}`
+    document.body.appendChild(exportRoot)
+
+    const logo = exportRoot.querySelector("img")
+    if (logo && !logo.complete) {
+      await new Promise((resolve) => {
+        logo.onload = () => resolve(null)
+        logo.onerror = () => resolve(null)
       })
-    document.body.appendChild(clone)
+    }
 
     await new Promise((resolve) => requestAnimationFrame(resolve))
-    await new Promise((resolve) => requestAnimationFrame(resolve))
-
-    const exportWidth = clone.scrollWidth || Math.ceil(width)
-    const exportHeight = clone.scrollHeight || clone.getBoundingClientRect().height
 
     let dataUrl = ""
     try {
-      dataUrl = await toPng(clone, {
-        pixelRatio: 2,
-        backgroundColor: "#0a0a0b",
-        width: exportWidth,
-        height: exportHeight,
-        cacheBust: true,
-      })
-    } catch {
-      dataUrl = await toPng(source, {
+      dataUrl = await toPng(exportRoot, {
         pixelRatio: 2,
         backgroundColor: "#0a0a0b",
         cacheBust: true,
       })
     } finally {
-      document.body.removeChild(clone)
+      document.body.removeChild(exportRoot)
     }
     const link = document.createElement("a")
     link.download = `shopping-list-${new Date().toISOString().slice(0, 10)}.png`
