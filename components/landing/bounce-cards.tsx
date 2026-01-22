@@ -131,7 +131,11 @@ export default function BounceCards({
         })
       } else {
         const offsetX = i < hoveredIdx ? -160 : 160
-        const pushedTransform = getPushedTransform(baseTransform, offsetX)
+        const adjustedOffset = isMobile ? offsetX * 0.45 : offsetX
+        const pushedTransform = getPushedTransform(
+          baseTransform,
+          adjustedOffset
+        )
         const distance = Math.abs(hoveredIdx - i)
         const delay = distance * 0.05
 
