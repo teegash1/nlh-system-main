@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { PwaInstallButton } from "@/components/landing/pwa-install-button"
+import BounceCards from "@/components/landing/bounce-cards"
 
 const highlights = [
   {
@@ -78,6 +79,22 @@ const workflow = [
     title: "Report & plan",
     description: "Export insights for budgeting and ministry planning.",
   },
+]
+
+const bounceImages = [
+  "https://images.unsplash.com/photo-1506617420156-8e4536971650?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1511690743698-d9d85f2fbf38?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1484980972926-edee96e0960d?auto=format&fit=crop&w=600&q=80",
+]
+
+const bounceTransforms = [
+  "rotate(5deg) translate(-150px)",
+  "rotate(0deg) translate(-70px)",
+  "rotate(-5deg)",
+  "rotate(5deg) translate(70px)",
+  "rotate(-5deg) translate(150px)",
 ]
 
 export default function HomePage() {
@@ -178,7 +195,20 @@ export default function HomePage() {
                 ))}
               </div>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-6">
+              <div className="flex justify-center lg:justify-end">
+                <BounceCards
+                  className="w-full max-w-[520px]"
+                  images={bounceImages}
+                  containerWidth={520}
+                  containerHeight={260}
+                  animationDelay={1.4}
+                  animationStagger={0.09}
+                  easeType="elastic.out(1, 0.5)"
+                  transformStyles={bounceTransforms}
+                  enableHover
+                />
+              </div>
               {highlights.map((item) => {
                 const Icon = item.icon
                 return (
