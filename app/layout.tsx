@@ -5,6 +5,7 @@ import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { ScrollToTop } from "@/components/layout/scroll-to-top"
 import { ThemeProvider } from "@/components/theme-provider"
+import { ServiceWorkerRegistrar } from "@/components/pwa/service-worker"
 
 const _inter = Inter({ 
   subsets: ["latin"],
@@ -18,6 +19,7 @@ export const metadata: Metadata = {
   generator: 'v0.app',
   keywords: ['inventory', 'stock management', 'church', 'monitoring', 'nobles lighthouse'],
   authors: [{ name: 'Nobles Lighthouse' }],
+  manifest: '/manifest.webmanifest',
 }
 
 export const viewport: Viewport = {
@@ -38,6 +40,7 @@ export default function RootLayout({
       <body className="font-sans antialiased min-h-screen">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <ScrollToTop />
+          <ServiceWorkerRegistrar />
           {children}
           <Analytics />
         </ThemeProvider>

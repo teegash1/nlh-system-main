@@ -59,7 +59,7 @@ export default async function TeamPage() {
     const userIds = users.map((item) => item.id)
     const { data: profilesData, error: profilesError } = await admin
       .from("profiles")
-      .select("id, full_name, role")
+      .select("id, full_name, role, avatar_url")
       .in("id", userIds)
 
     if (profilesError) throw new Error(profilesError.message)
@@ -94,6 +94,7 @@ export default async function TeamPage() {
         status,
         lastActiveLabel,
         initials: buildInitials(name),
+        avatarUrl: memberProfile?.avatar_url ?? authUser.user_metadata?.avatar_url ?? null,
       }
     })
   } else {
@@ -111,6 +112,7 @@ export default async function TeamPage() {
         status: "active",
         lastActiveLabel: "You",
         initials: buildInitials(name),
+        avatarUrl: profile?.avatar_url ?? user.user_metadata?.avatar_url ?? null,
       },
     ]
   }

@@ -1,12 +1,58 @@
 import { AppShell } from "@/components/layout/app-shell"
 import { StatCard } from "@/components/dashboard/stat-card"
-import { StockChart } from "@/components/dashboard/stock-chart"
-import { CategoryChart } from "@/components/dashboard/category-chart"
-import { TaskSummary } from "@/components/dashboard/task-summary"
-import { ActivityFeed } from "@/components/dashboard/activity-feed"
-import { LowStockAlert } from "@/components/dashboard/low-stock-alert"
-import { CalendarWidget } from "@/components/dashboard/calendar-widget"
-import { ShoppingList } from "@/components/dashboard/shopping-list"
+import dynamic from "next/dynamic"
+import {
+  ActivityFeedSkeleton,
+  CalendarWidgetSkeleton,
+  CategoryChartSkeleton,
+  LowStockAlertSkeleton,
+  ShoppingListSkeleton,
+  StockChartSkeleton,
+  TaskSummarySkeleton,
+} from "@/components/dashboard/dashboard-skeletons"
+const StockChart = dynamic(
+  () => import("@/components/dashboard/stock-chart").then((mod) => mod.StockChart),
+  { ssr: false, loading: () => <StockChartSkeleton /> }
+)
+const CategoryChart = dynamic(
+  () =>
+    import("@/components/dashboard/category-chart").then(
+      (mod) => mod.CategoryChart
+    ),
+  { ssr: false, loading: () => <CategoryChartSkeleton /> }
+)
+const TaskSummary = dynamic(
+  () => import("@/components/dashboard/task-summary").then((mod) => mod.TaskSummary),
+  { ssr: false, loading: () => <TaskSummarySkeleton /> }
+)
+const CalendarWidget = dynamic(
+  () =>
+    import("@/components/dashboard/calendar-widget").then(
+      (mod) => mod.CalendarWidget
+    ),
+  { ssr: false, loading: () => <CalendarWidgetSkeleton /> }
+)
+const LowStockAlert = dynamic(
+  () =>
+    import("@/components/dashboard/low-stock-alert").then(
+      (mod) => mod.LowStockAlert
+    ),
+  { ssr: false, loading: () => <LowStockAlertSkeleton /> }
+)
+const ActivityFeed = dynamic(
+  () =>
+    import("@/components/dashboard/activity-feed").then(
+      (mod) => mod.ActivityFeed
+    ),
+  { ssr: false, loading: () => <ActivityFeedSkeleton /> }
+)
+const ShoppingList = dynamic(
+  () =>
+    import("@/components/dashboard/shopping-list").then(
+      (mod) => mod.ShoppingList
+    ),
+  { ssr: false, loading: () => <ShoppingListSkeleton /> }
+)
 import { Package, TrendingUp, DollarSign, AlertTriangle } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"

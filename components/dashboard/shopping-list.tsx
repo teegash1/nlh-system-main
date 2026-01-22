@@ -466,7 +466,7 @@ export function ShoppingList({
   }
 
   const handleExportPdf = () => {
-    const logoUrl = `${window.location.origin}/marketing_13593461.png`
+    const logoUrl = `${window.location.origin}/fav.png`
     const reportDate = new Date().toLocaleString()
     const rowsHtml = rows
       .map(

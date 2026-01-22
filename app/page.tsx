@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { PwaInstallButton } from "@/components/landing/pwa-install-button"
 
 const highlights = [
   {
@@ -82,6 +83,7 @@ const workflow = [
 export default function HomePage() {
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
+      <PwaInstallButton />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(96,165,250,0.18),_transparent_45%),_radial-gradient(circle_at_bottom,_rgba(52,211,153,0.12),_transparent_40%)]" />
       <div className="pointer-events-none absolute -left-32 top-20 h-72 w-72 rounded-full bg-chart-5/15 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-32 right-12 h-80 w-80 rounded-full bg-chart-2/15 blur-3xl" />
@@ -91,7 +93,7 @@ export default function HomePage() {
           <Link href="/" className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-secondary/40">
               <img
-                src="/marketing_13593461.png"
+                src="/fav.png"
                 alt="Nobles Lighthouse System"
                 className="h-6 w-6 rounded-sm"
               />

@@ -288,7 +288,7 @@ const buildHtmlShell = (body: string) => `
 `
 
 const buildHeader = (title: string, meta: WeeklyReport["meta"]) => {
-  const logoUrl = `${window.location.origin}/marketing_13593461.png`
+  const logoUrl = `${window.location.origin}/fav.png`
   return `
     <div class="header">
       <div class="logo">

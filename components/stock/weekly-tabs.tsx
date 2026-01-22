@@ -86,7 +86,7 @@ export function WeeklyTabs({ tabs, data }: WeeklyTabsProps) {
       (item) => (item.weekData[active.weekLabel] ?? "").trim() !== ""
     ).length
 
-    const logoUrl = `${window.location.origin}/marketing_13593461.png`
+    const logoUrl = `${window.location.origin}/fav.png`
 
     const rowsHtml = data
       .map((item, index) => {

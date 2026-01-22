@@ -10,10 +10,9 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { AuthSuccessDialog } from "@/components/auth/auth-success-dialog"
+import { LoginForm } from "@/components/auth/login-form"
 import { login } from "./actions"
 
 type SearchParams = Record<string, string | string[] | undefined>
@@ -48,7 +47,7 @@ const quickStats = [
   },
   {
     label: "Active ministries",
-    value: "14",
+    value: "1",
     detail: "serving weekly",
   },
 ]
@@ -129,64 +128,7 @@ export default async function LoginPage({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              {error && (
-                <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive-foreground">
-                  {error}
-                </div>
-              )}
-              <form action={login} className="space-y-4">
-                <input type="hidden" name="next" value={next} />
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-foreground">
-                    Work Email
-                  </Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="you@nobles.org"
-                    autoComplete="email"
-                    required
-                    className="bg-secondary/40 border-border text-foreground"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password" className="text-foreground">
-                    Password
-                  </Label>
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    placeholder="Enter your password"
-                    autoComplete="current-password"
-                    required
-                    className="bg-secondary/40 border-border text-foreground"
-                  />
-                </div>
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-border bg-secondary/40"
-                      defaultChecked
-                    />
-                    Remember this device
-                  </label>
-                  <Link
-                    href="/help"
-                    className="text-chart-1 transition-colors hover:text-chart-1/80"
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
-                <Button
-                  type="submit"
-                  className="w-full bg-accent text-foreground hover:bg-accent/80 border border-border premium-btn"
-                >
-                  Sign in
-                </Button>
-              </form>
+              <LoginForm action={login} next={next} error={error} />
 
               <Separator className="bg-border/70" />
 

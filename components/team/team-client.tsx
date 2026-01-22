@@ -52,6 +52,7 @@ export type TeamMember = {
   status: "active" | "inactive" | "invited"
   lastActiveLabel: string
   initials: string
+  avatarUrl?: string | null
 }
 
 const roleMeta = {
@@ -304,10 +305,18 @@ export function TeamClient({
               <CardContent className="space-y-4 p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#3a3a40] to-[#2a2a30] border border-[#4a4a50]">
-                      <span className="text-sm font-semibold text-foreground">
-                        {member.initials}
-                      </span>
+                    <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#3a3a40] to-[#2a2a30] border border-[#4a4a50] overflow-hidden">
+                      {member.avatarUrl ? (
+                        <img
+                          src={member.avatarUrl}
+                          alt={member.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-sm font-semibold text-foreground">
+                          {member.initials}
+                        </span>
+                      )}
                     </div>
                     <div>
                       <p className="text-sm font-medium text-foreground">
