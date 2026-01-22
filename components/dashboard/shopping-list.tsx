@@ -505,6 +505,13 @@ export function ShoppingList({
       tbody tr:last-child td { border-bottom: none; }
       .align-right { text-align: right; }
       .footer { margin-top: 18px; color: #71717a; font-size: 11px; }
+      @media (max-width: 640px) {
+        .page { padding: 24px; }
+        .header { flex-direction: column; align-items: flex-start; }
+        .meta { text-align: left; }
+        .summary { grid-template-columns: 1fr; }
+        th:nth-child(6), th:nth-child(7), td:nth-child(6), td:nth-child(7) { display: none; }
+      }
     `
     const body = `
       <div class="page">
@@ -578,18 +585,22 @@ export function ShoppingList({
     const { styles, body } = buildExportTemplate()
     const exportRoot = document.createElement("div")
     const baseWidth = captureRef.current?.getBoundingClientRect().width ?? 980
-    const exportWidth = Math.min(1100, Math.max(760, Math.round(baseWidth)))
+    const exportWidth = Math.min(1100, Math.max(360, Math.round(baseWidth)))
 
     exportRoot.style.position = "fixed"
-    exportRoot.style.left = "-9999px"
+    exportRoot.style.left = "0"
     exportRoot.style.top = "0"
     exportRoot.style.width = `${exportWidth}px`
     exportRoot.style.background = "#0a0a0b"
     exportRoot.style.color = "#f4f4f5"
     exportRoot.style.pointerEvents = "none"
-    exportRoot.style.zIndex = "-1"
+    exportRoot.style.opacity = "0"
     exportRoot.innerHTML = `<style>${styles}</style>${body}`
     document.body.appendChild(exportRoot)
+
+    if (document.fonts?.ready) {
+      await document.fonts.ready
+    }
 
     const logo = exportRoot.querySelector("img")
     if (logo && !logo.complete) {
@@ -599,6 +610,7 @@ export function ShoppingList({
       })
     }
 
+    await new Promise((resolve) => requestAnimationFrame(resolve))
     await new Promise((resolve) => requestAnimationFrame(resolve))
 
     const exportHeight =
@@ -612,6 +624,7 @@ export function ShoppingList({
         width: exportWidth,
         height: exportHeight,
         cacheBust: true,
+        style: { opacity: "1" },
       })
     } finally {
       document.body.removeChild(exportRoot)
