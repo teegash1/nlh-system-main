@@ -581,13 +581,31 @@ export function ShoppingList({
       </html>
     `
 
-    const pdfWindow = window.open("", "_blank", "width=1100,height=900")
-    if (!pdfWindow) return
-    pdfWindow.document.open()
-    pdfWindow.document.write(html)
-    pdfWindow.document.close()
-    pdfWindow.focus()
-    setTimeout(() => pdfWindow.print(), 400)
+    const iframe = document.createElement("iframe")
+    iframe.style.position = "fixed"
+    iframe.style.right = "0"
+    iframe.style.bottom = "0"
+    iframe.style.width = "0"
+    iframe.style.height = "0"
+    iframe.style.border = "0"
+    iframe.style.visibility = "hidden"
+    document.body.appendChild(iframe)
+
+    iframe.onload = () => {
+      const win = iframe.contentWindow
+      if (!win) return
+      win.focus()
+      win.print()
+      setTimeout(() => {
+        document.body.removeChild(iframe)
+      }, 500)
+    }
+
+    const doc = iframe.contentDocument
+    if (!doc) return
+    doc.open()
+    doc.write(html)
+    doc.close()
   }
 
   const handleExportImage = async () => {
