@@ -485,21 +485,24 @@ export function ShoppingList({
       .join("")
     const styles = `
       * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
-      body { margin: 0; background: #0a0a0b; color: #f4f4f5; }
-      .page { padding: 32px; }
-      .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2a2a2f; padding-bottom: 16px; }
+      body { margin: 0; background: #0a0a0b; color: #f4f4f5; -webkit-print-color-adjust: exact; color-adjust: exact; }
+      .page { padding: 32px; max-width: 1000px; margin: 0 auto; }
+      .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #222229; padding-bottom: 16px; gap: 16px; }
       .logo { display: flex; gap: 12px; align-items: center; }
-      .logo img { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; }
-      h1 { margin: 0; font-size: 20px; }
+      .logo img { width: 42px; height: 42px; border-radius: 12px; object-fit: cover; background: #111115; border: 1px solid #2a2a2f; }
+      h1 { margin: 0; font-size: 20px; letter-spacing: -0.01em; }
       .subtitle { margin-top: 4px; font-size: 12px; color: #a1a1aa; }
-      .meta { text-align: right; font-size: 12px; color: #a1a1aa; }
+      .meta { text-align: right; font-size: 12px; color: #a1a1aa; line-height: 1.5; }
       .summary { margin: 20px 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-      .card { border: 1px solid #2a2a2f; background: #141418; padding: 12px; border-radius: 12px; }
-      .card span { display: block; font-size: 11px; color: #a1a1aa; text-transform: uppercase; letter-spacing: .1em; }
+      .card { border: 1px solid #24242a; background: linear-gradient(180deg, #131318 0%, #101014 100%); padding: 14px; border-radius: 14px; box-shadow: 0 10px 24px rgba(0,0,0,0.35); }
+      .card span { display: block; font-size: 11px; color: #a1a1aa; text-transform: uppercase; letter-spacing: .14em; }
       .card strong { font-size: 18px; }
+      .table-card { border: 1px solid #24242a; border-radius: 14px; overflow: hidden; background: #0e0e12; box-shadow: 0 14px 32px rgba(0,0,0,0.4); }
       table { width: 100%; border-collapse: collapse; }
-      th, td { padding: 10px 12px; border-bottom: 1px solid #242428; font-size: 12px; text-align: left; }
-      th { font-size: 11px; color: #a1a1aa; text-transform: uppercase; letter-spacing: .08em; }
+      thead { background: #0b0b0f; }
+      th, td { padding: 11px 12px; border-bottom: 1px solid #1f1f25; font-size: 12px; text-align: left; }
+      th { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: .12em; }
+      tbody tr:last-child td { border-bottom: none; }
       .align-right { text-align: right; }
       .footer { margin-top: 18px; color: #71717a; font-size: 11px; }
     `
@@ -524,22 +527,24 @@ export function ShoppingList({
           <div class="card"><span>Low stock</span><strong>${rows.filter((r) => r.current > 0).length}</strong></div>
           <div class="card"><span>Estimated total</span><strong>${formatKes(total)}</strong></div>
         </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Category</th>
-              <th>Status</th>
-              <th>Current</th>
-              <th class="align-right">Qty to Buy</th>
-              <th class="align-right">Unit Price</th>
-              <th class="align-right">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rowsHtml || "<tr><td colspan='7'>No items to purchase.</td></tr>"}
-          </tbody>
-        </table>
+        <div class="table-card">
+          <table>
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Category</th>
+                <th>Status</th>
+                <th>Current</th>
+                <th class="align-right">Qty to Buy</th>
+                <th class="align-right">Unit Price</th>
+                <th class="align-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml || "<tr><td colspan='7'>No items to purchase.</td></tr>"}
+            </tbody>
+          </table>
+        </div>
         <div class="footer">Generated ${escapeHtml(reportDate)}</div>
       </div>
     `
@@ -573,7 +578,7 @@ export function ShoppingList({
     const { styles, body } = buildExportTemplate()
     const exportRoot = document.createElement("div")
     const baseWidth = captureRef.current?.getBoundingClientRect().width ?? 980
-    const exportWidth = Math.min(1100, Math.max(820, Math.round(baseWidth)))
+    const exportWidth = Math.min(1100, Math.max(760, Math.round(baseWidth)))
 
     exportRoot.style.position = "fixed"
     exportRoot.style.left = "-9999px"
@@ -596,11 +601,16 @@ export function ShoppingList({
 
     await new Promise((resolve) => requestAnimationFrame(resolve))
 
+    const exportHeight =
+      exportRoot.scrollHeight || exportRoot.getBoundingClientRect().height
+
     let dataUrl = ""
     try {
       dataUrl = await toPng(exportRoot, {
         pixelRatio: 2,
         backgroundColor: "#0a0a0b",
+        width: exportWidth,
+        height: exportHeight,
         cacheBust: true,
       })
     } finally {
@@ -610,6 +620,26 @@ export function ShoppingList({
     link.download = `shopping-list-${new Date().toISOString().slice(0, 10)}.png`
     link.href = dataUrl
     link.click()
+
+    const preview = window.open("", "_blank", "width=1100,height=900")
+    if (preview) {
+      preview.document.open()
+      preview.document.write(`
+        <html>
+          <head>
+            <title>Shopping List</title>
+            <style>
+              body { margin: 0; background: #0a0a0b; display: flex; align-items: center; justify-content: center; padding: 24px; color: #f4f4f5; font-family: 'Inter', sans-serif; }
+              img { max-width: 100%; height: auto; border-radius: 16px; box-shadow: 0 18px 40px rgba(0,0,0,0.45); }
+            </style>
+          </head>
+          <body>
+            <img src="${dataUrl}" alt="Shopping List Export" />
+          </body>
+        </html>
+      `)
+      preview.document.close()
+    }
   }
 
   return (
