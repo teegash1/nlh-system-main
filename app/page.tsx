@@ -82,11 +82,11 @@ const workflow = [
 ]
 
 const bounceImages = [
-  "https://source.unsplash.com/600x600/?stockroom,shelves",
-  "https://source.unsplash.com/600x600/?paper,rolls,storage",
-  "https://source.unsplash.com/600x600/?warehouse,inventory",
-  "https://source.unsplash.com/600x600/?receipt,shopping,list",
-  "https://source.unsplash.com/600x600/?storage,boxes,labels",
+  "https://images.unsplash.com/photo-1506617420156-8e4536971650?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1511690743698-d9d85f2fbf38?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1484980972926-edee96e0960d?auto=format&fit=crop&w=600&q=80",
 ]
 
 const bounceTransforms = [
