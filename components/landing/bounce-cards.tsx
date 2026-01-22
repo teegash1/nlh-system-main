@@ -131,7 +131,7 @@ export default function BounceCards({
         })
       } else {
         const offsetX = i < hoveredIdx ? -160 : 160
-        const adjustedOffset = isMobile ? offsetX * 0.45 : offsetX
+        const adjustedOffset = isMobile ? offsetX * 0.6 : offsetX
         const pushedTransform = getPushedTransform(
           baseTransform,
           adjustedOffset
