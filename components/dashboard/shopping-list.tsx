@@ -338,6 +338,11 @@ export function ShoppingList({
       return
     }
 
+    await supabase
+      .from("shopping_lists")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", listId)
+
     await supabase.from("shopping_list_entries").delete().eq("list_id", listId)
     const entries = rows.map((row) => ({
       list_id: listId,

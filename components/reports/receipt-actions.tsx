@@ -122,6 +122,8 @@ export function ReceiptActions({
         title="Delete this receipt?"
         description="This removes the receipt file and its record from the archive."
         confirmLabel="Delete receipt"
+        confirmText="delete"
+        confirmPlaceholder="Type delete to confirm"
         onConfirm={handleDelete}
         trigger={
           <Button

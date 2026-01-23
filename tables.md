@@ -414,6 +414,7 @@ create table public.shopping_lists (
   status text not null default 'active'::text,
   created_by uuid null references auth.users (id) on delete set null,
   created_at timestamp with time zone not null default now(),
+  updated_at timestamp with time zone not null default now(),
   completed_at timestamp with time zone null,
   constraint shopping_lists_pkey primary key (id),
   constraint shopping_lists_status_check check (status in ('active', 'done'))
@@ -447,6 +448,19 @@ on public.shopping_lists
 for delete
 to authenticated
 using (true);
+
+create or replace function public.set_updated_at_shopping_lists()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_shopping_lists_updated_at on public.shopping_lists;
+create trigger trg_shopping_lists_updated_at
+before update on public.shopping_lists
+for each row execute function public.set_updated_at_shopping_lists();
 
 
 create table public.shopping_list_entries (

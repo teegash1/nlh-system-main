@@ -238,6 +238,9 @@ const buildHtmlShell = (body: string) => `
         border-collapse: collapse;
         font-size: 12px;
       }
+      table.weekly-table {
+        table-layout: fixed;
+      }
       thead th {
         text-align: left;
         font-size: 11px;
@@ -251,6 +254,34 @@ const buildHtmlShell = (body: string) => `
       tbody td {
         padding: 10px;
         border-bottom: 1px solid #e2e8f0;
+      }
+      table.weekly-table th,
+      table.weekly-table td {
+        font-size: 11px;
+        padding: 8px 9px;
+      }
+      table.weekly-table td {
+        vertical-align: top;
+      }
+      table.weekly-table th:nth-child(1),
+      table.weekly-table td:nth-child(1) {
+        width: 24%;
+      }
+      table.weekly-table th:nth-child(2),
+      table.weekly-table td:nth-child(2) {
+        width: 18%;
+      }
+      table.weekly-table th:nth-child(3),
+      table.weekly-table td:nth-child(3),
+      table.weekly-table th:nth-child(4),
+      table.weekly-table td:nth-child(4),
+      table.weekly-table th:nth-child(5),
+      table.weekly-table td:nth-child(5),
+      table.weekly-table th:nth-child(6),
+      table.weekly-table td:nth-child(6) {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       .row-even { background: #ffffff; }
       .row-odd { background: #f8fafc; }
@@ -276,6 +307,23 @@ const buildHtmlShell = (body: string) => `
       @media print {
         body { background: #ffffff; }
         .page { margin: 0; border: none; border-radius: 0; }
+      }
+      @media (max-width: 680px) {
+        .page { padding: 24px; }
+        .cards { gap: 10px; }
+        table.weekly-table th,
+        table.weekly-table td {
+          font-size: 10px;
+          padding: 7px 8px;
+        }
+        table.weekly-table th:nth-child(1),
+        table.weekly-table td:nth-child(1) {
+          width: 28%;
+        }
+        table.weekly-table th:nth-child(2),
+        table.weekly-table td:nth-child(2) {
+          width: 20%;
+        }
       }
     </style>
   </head>
@@ -394,7 +442,7 @@ export function ReportExportMenu({ reportType, reportTitle }: ReportExportMenuPr
           ${summary}
           <div class="section">
             <h2>Weekly Stock Summary</h2>
-            <table>
+            <table class="weekly-table">
               <thead>
                 <tr>
                   <th>Item</th>

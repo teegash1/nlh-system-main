@@ -4,6 +4,7 @@ import React, { useState, useTransition } from "react"
 import { AlertTriangle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,8 @@ interface ConfirmDialogProps {
   cancelLabel?: string
   onConfirm: () => void | Promise<void>
   confirmVariant?: "default" | "destructive" | "secondary" | "outline"
+  confirmText?: string
+  confirmPlaceholder?: string
 }
 
 export function ConfirmDialog({
@@ -33,9 +36,12 @@ export function ConfirmDialog({
   cancelLabel = "Cancel",
   onConfirm,
   confirmVariant = "destructive",
+  confirmText,
+  confirmPlaceholder,
 }: ConfirmDialogProps) {
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const [typedValue, setTypedValue] = useState("")
 
   const handleConfirm = () => {
     startTransition(async () => {
@@ -44,13 +50,24 @@ export function ConfirmDialog({
     })
   }
 
+  const requiresConfirmText = Boolean(confirmText)
+  const confirmMatch =
+    !requiresConfirmText ||
+    typedValue.trim().toLowerCase() === String(confirmText).toLowerCase()
+
   const iconClasses =
     confirmVariant === "destructive"
       ? "border-destructive/20 bg-destructive/10 text-destructive"
       : "border-border bg-secondary/60 text-foreground"
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen)
+        if (!nextOpen) setTypedValue("")
+      }}
+    >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="bg-card border-border sm:max-w-[420px]">
         <DialogHeader>
@@ -73,6 +90,19 @@ export function ConfirmDialog({
             </div>
           </div>
         </DialogHeader>
+        {requiresConfirmText && (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Type <span className="font-semibold text-foreground">{confirmText}</span> to confirm.
+            </p>
+            <Input
+              value={typedValue}
+              onChange={(event) => setTypedValue(event.target.value)}
+              placeholder={confirmPlaceholder ?? `Type ${confirmText}`}
+              className="border-border bg-background text-foreground"
+            />
+          </div>
+        )}
         <DialogFooter className="gap-2 sm:gap-0">
           <Button
             type="button"
@@ -85,7 +115,7 @@ export function ConfirmDialog({
           <Button
             type="button"
             variant={confirmVariant}
-            disabled={isPending}
+            disabled={isPending || !confirmMatch}
             onClick={handleConfirm}
           >
             {isPending ? "Working..." : confirmLabel}
